@@ -23,6 +23,7 @@ EVENT_TYPES = [
     "EiffelArtifactPublishedEvent",
     "EiffelConfidenceLevelModified"
 ]
+Aaa = 0
 
 class EiffelStream:
     def __init__(self, uri, user, password):
@@ -74,7 +75,9 @@ class EiffelStream:
             num_links = random.randint(0, 2)  
             context_events = session.execute_read(self._get_multiple_random_event_uuids, new_uuid, "EiffelContextDefinedEvent", num_links)
             for existing_uuid, existing_type in context_events:
+                global Aaa
                 session.execute_write(self._link_event, new_uuid, existing_uuid, "CONTEXT_DEFINED")
+                Aaa = Aaa + 1
                 print(f"🔗 Linked {new_uuid} ({event_type}) → {existing_uuid} ({existing_type}) via CONTEXT_DEFINED")
 
         elif event_type == "EiffelArtifactPublishedEvent":
@@ -168,8 +171,9 @@ try:
 
         # Wait for a few seconds before creating the next event
         #time.sleep(random.uniform(1, 5))  # Random delay between 1 to 5 seconds
-        time.sleep(0.2)
+        #time.sleep(0.2)
 
 except KeyboardInterrupt:
     print("\n🛑 Stopping Eiffel event stream.")
+    print(Aaa)
     graph.close()
