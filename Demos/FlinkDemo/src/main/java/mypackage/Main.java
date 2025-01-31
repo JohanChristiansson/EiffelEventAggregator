@@ -1,7 +1,28 @@
 package mypackage;
 
 
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import mypackage.source.Source;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.datastream.DataStream;
+
+public class Main {
+
+    public static void main(String[] args) throws Exception {
+        // Create a streaming execution environment
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+        // Create a DataStream using the custom RabbitMQ Source
+        DataStream<String> messageStream = env.addSource(new Source());
+
+        // Perform operations on the stream (for example, printing the messages)
+        messageStream.print();
+
+        // Execute the Flink job
+        env.execute("Flink RabbitMQ Consumer Job");
+    }
+}
+
+/*import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
 import org.apache.flink.cep.PatternStream;
@@ -107,5 +128,5 @@ public class Main {
         env.execute("Flink CEP Example");
         LOG.info("Finished program");
     }
-}
+}*/
 
