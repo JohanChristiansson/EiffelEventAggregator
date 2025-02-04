@@ -23,7 +23,7 @@ def event_ArtC():
         UNWIND $createdNodes AS n                                                                                                                          
         MATCH (n {type:"EiffelArtifactCreatedEvent"})-[:CONTEXT_DEFINED]->(e:Event {type:"EiffelContextDefinedEvent"})                                     
         CALL apoc.load.jsonParams(                                                                                                                         
-            "http://localhost:5000/event",                                                                                                                 
+            "http://localhost:5000/event_ArtC",                                                                                                                 
             {`Content-Type`: "application/json"},                                                                                                          
             apoc.convert.toJson({ArtC: n.id, FCD: e.id})                                                                                                   
         ) YIELD value                                                                                                                                      

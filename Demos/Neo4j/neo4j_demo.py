@@ -1,6 +1,6 @@
 ############################################
 #      Simulation code for creating an     #
-#       Event Stream in Eiffel Fasion      #
+#       Event Stream in Eiffel Fashion     #
 #     Simulation done for Neo4j Desktop    #
 ############################################
 
@@ -239,3 +239,5 @@ finally:
         plt.show(block=True)
     else:
         print("Not enough data to generate a meaningful plot.")
+
+
