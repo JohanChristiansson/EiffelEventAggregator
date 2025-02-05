@@ -20,8 +20,8 @@ created_events = []
 def generate_event_json(event_type, event_uuid, event_time, links):
     """Generate the event JSON based on the given event type and generated UUID."""
     
-   # timestamp_ms = int(time.mktime(datetime.datetime.strptime(event_time, "%Y-%m-%dT%H:%M:%S.%f").timetuple()) * 1000)
-    timestamp_ms = str(len(created_events) * 1000)
+    timestamp_ms = int(time.mktime(datetime.datetime.strptime(event_time, "%Y-%m-%dT%H:%M:%S.%f").timetuple()) * 1000)
+    #timestamp_ms = str(len(created_events) * 1000)
 
     event_json = {
         "meta": {
