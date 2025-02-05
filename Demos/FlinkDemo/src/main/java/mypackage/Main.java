@@ -60,14 +60,11 @@ public class Main {
             }
         }).filter(Objects::nonNull);
 
-        DataStream<String> eventOrder = dataStream.map(event -> event.getMeta().getId());
-        eventOrder.print();
-
         //What does duration.ofseconds  Specifies that events can arrive out of order by up to 10 seconds.
         //It is then handled by the watermark strategy
         //Need to look further into watermark strategy as there is a delay before processing currently
         dataStream = dataStream.assignTimestampsAndWatermarks(
-                WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(0,1))
+                WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(1))
                         .withTimestampAssigner((event, timestamp) -> event.getMeta().getTime())
                         .withIdleness(Duration.ofSeconds(1)) // Adjust the duration as needed
         );
@@ -85,29 +82,18 @@ public class Main {
                         }
                         //Verify correct link
                         Event previousEvent = ctx.getEventsForPattern("FCD").iterator().next();
-                        for (Event.Link link : event.getLinks()) {
-                            if (previousEvent.getMeta().getId().equals(link.getTarget()) && link.getType().equals("CONTEXT_DEFINED")){
-                                return true;
-                            }
-                        }
-                        return false;
+                        return HelpFunctions.linksToEvent(event, previousEvent, "CONTEXT_DEFINED");
                     }
                 });
 
         PatternStream<Event> artifactCreatedStream = CEP.pattern(dataStream, artifactCreated);
-        artifactCreatedStream.flatSelect(new PatternFlatSelectFunction<Event, Object>() {
-            @Override
-            public void flatSelect(Map<String, List<Event>> pattern, Collector<Object> collector) throws Exception {
-                System.out.println("Pattern" + pattern);
-            }
-        });
 
         DataStream<String> result = artifactCreatedStream.select(
                 (PatternSelectFunction<Event, String>) patternMatch -> {
                     Event start = patternMatch.get("FCD").get(0);
                     Event middle = patternMatch.get("ArtC").get(0);
 
-                    return String.format("Detected sequence:" + middle.getMeta().getId() + start.getMeta().getId());
+                    return String.format("Detected sequence: FCD(" + start.getMeta().getId() + ") ArtC("+ middle.getMeta().getId() + ")");
                 }
         );
 
@@ -126,13 +112,11 @@ public class Main {
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
-                        Event fcd1 = ctx.getEventsForPattern("FCD1").iterator().next();
-                        for (Event.Link link : event.getLinks()) {
-                            if (fcd1.getMeta().getId().equals(link.getTarget()) && link.getType().equals("CONTEXT_DEFINED")) {
-                                return true;
-                            }
+                        if (!event.getMeta().getType().equals("EiffelArtifactCreatedEvent")){
+                            return false;
                         }
-                        return false;
+                        Event fcd1 = ctx.getEventsForPattern("FCD1").iterator().next();
+                        return HelpFunctions.linksToEvent(event, fcd1, "CONTEXT_DEFINED");
                     }
                 })
                 .followedByAny("FCD2") // FCD2 follows ArtC
@@ -141,6 +125,9 @@ public class Main {
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
+                        if (!event.getMeta().getType().equals("EiffelArtifactPublishedEvent")){
+                            return false;
+                        }
                         Event artC = ctx.getEventsForPattern("ArtC").iterator().next();
                         Event fcd2 = ctx.getEventsForPattern("FCD2").iterator().next();
 
@@ -169,6 +156,9 @@ public class Main {
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
+                        if (!event.getMeta().getType().equals("EiffelArtifactCreatedEvent")){
+                            return false;
+                        }
                         Event fcd1 = ctx.getEventsForPattern("FCD1").iterator().next();
                         Event fcd2 = ctx.getEventsForPattern("FCD2").iterator().next();
                         boolean linksToFcd1;
@@ -187,6 +177,9 @@ public class Main {
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
+                        if (!event.getMeta().getType().equals("EiffelArtifactPublishedEvent")){
+                            return false;
+                        }
                         Event artC = ctx.getEventsForPattern("ArtC").iterator().next();
                         Event fcd2 = ctx.getEventsForPattern("FCD2").iterator().next();
                         Event fcd1 = ctx.getEventsForPattern("FCD1").iterator().next();
@@ -229,7 +222,7 @@ public class Main {
                 Event artC = pattern.get("ArtC").get(0);
                 Event fcd2 = pattern.get("FCD2").get(0);
                 Event artP = pattern.get("ArtP").get(0);
-                
+
                 return String.format("Detected sequence: FCD1(%s), ArtC(%s), FCD2(%s), ArtP(%s)",
                         fcd1.getMeta().getId(), artC.getMeta().getId(), fcd2.getMeta().getId(), artP.getMeta().getId());
             }
