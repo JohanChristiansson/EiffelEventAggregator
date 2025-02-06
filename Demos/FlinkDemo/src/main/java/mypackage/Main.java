@@ -50,7 +50,8 @@ public class Main {
         ObjectMapper objectMapper = new ObjectMapper();
 
         //Do research on keyed stream. Not possible with current implementation of
-        //The graph. Can enable parallel processing, isnt available at this time?
+        //The graph. Can enable parallel processing, isnt available at this time due to how we currently
+        //use links to connect events.
         DataStream<Event> dataStream = rawStream.map(message -> {
             try {
                 return objectMapper.readValue(message, Event.class);
@@ -60,9 +61,10 @@ public class Main {
             }
         }).filter(Objects::nonNull);
 
-        //What does duration.ofseconds  Specifies that events can arrive out of order by up to 10 seconds.
-        //It is then handled by the watermark strategy
-        //Need to look further into watermark strategy as there is a delay before processing currently
+        //What does The watermark do? Specifies that events can arrive out of order by up to x seconds.
+        //Wait for events to arrive until x seconds has passed to handle events in the correct order, downside
+        //Causes delay.
+        //withIdleness makes the stream progress if it is idle for more than a second. Why is this needed?
         dataStream = dataStream.assignTimestampsAndWatermarks(
                 WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(1))
                         .withTimestampAssigner((event, timestamp) -> event.getMeta().getTime())
@@ -210,11 +212,11 @@ public class Main {
                     }
                 });
 
-        // Apply pattern to data stream for both patterns (results in PatternStream<Event>)
+        //Handles both patterns for Artifact published and then merge the output streams.. Not very pretty.
+        //Can be handled by creating larger complex pattern with multiple ors.
         PatternStream<Event> artifactPublishedCase1PatternStream = CEP.pattern(dataStream, artifactPublishedCase1Pattern);
         PatternStream<Event> artifactPublishedCase2And3PatternStream = CEP.pattern(dataStream, artifactPublishedCase2And3Pattern);
 
-        // Extract events from the PatternStream
         DataStream<String> ArtifactPublishedStream1 = artifactPublishedCase1PatternStream.select(new PatternSelectFunction<Event, String>() {
             @Override
             public String select(Map<String, List<Event>> pattern) throws Exception {

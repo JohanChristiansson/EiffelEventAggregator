@@ -50,7 +50,7 @@ event1 = {
 
 event2 = {
         "meta": {
-            "time": 2000,
+            "time": 3000,
             "id": 2,
             "version": "1.0.0",
             "type": "EiffelFlowContextDefinedEvent",
@@ -87,7 +87,7 @@ event2 = {
 
 event3 = {
         "meta": {
-            "time": 3000,
+            "time": 2000,
             "id": 3,
             "version": "1.0.0",
             "type": "EiffelArtifactCreatedEvent",
@@ -176,9 +176,9 @@ hardcoded_events3 = [event1, event3, event2, event4]
 #This one should not work
 hardcoded_events4 = [event4, event1, event2, event3]
 
-for i in range(4):
+for i in range(100):
     create_event()
-    time.sleep(0.2) 
+    time.sleep(0.01) 
 
     test = {
     "id": "2",
@@ -189,9 +189,9 @@ for i in range(4):
     test = json.dumps(test)
 
     hardcoded_events = hardcoded_events3
-    hardcoded_events[i]["meta"]["time"] = int(time.mktime(datetime.datetime.strptime(datetime.datetime.now().isoformat(), "%Y-%m-%dT%H:%M:%S.%f").timetuple()) * 1000)
-    event = json.dumps(hardcoded_events[i])
-    #event = json.dumps(created_events[i])
+    #hardcoded_events[i]["meta"]["time"] = int(datetime.datetime.now().timestamp() * 1000)
+    #event = json.dumps(hardcoded_events[i])
+    event = json.dumps(created_events[i])
 
     channel.queue_declare(queue='hello')
     event_data = json.loads(event)

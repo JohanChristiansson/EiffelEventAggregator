@@ -17,10 +17,10 @@ EVENT_TYPES = [
 
 created_events = []
 
-def generate_event_json(event_type, event_uuid, event_time, links):
+def generate_event_json(event_type, event_uuid, links):
     """Generate the event JSON based on the given event type and generated UUID."""
     
-    timestamp_ms = int(time.mktime(datetime.datetime.strptime(event_time, "%Y-%m-%dT%H:%M:%S.%f").timetuple()) * 1000)
+    timestamp_ms = int(datetime.datetime.now().timestamp() * 1000)
     #timestamp_ms = str(len(created_events) * 1000)
 
     event_json = {
@@ -69,7 +69,6 @@ def create_event():
         to verify that patterns can be detected."""
     event_type = random.choice(EVENT_TYPES)
     event_id = str(uuid.uuid4())
-    event_time = datetime.datetime.now().isoformat()
 
     links = []
     
@@ -128,7 +127,7 @@ def create_event():
                     links.append(link)
 
     # Generate the event as a JSON object
-    event_json = generate_event_json(event_type, event_id, event_time, links)
+    event_json = generate_event_json(event_type, event_id, links)
     
     created_events.append(json.loads(event_json))  # Store the generated event in the list for future linking
     
