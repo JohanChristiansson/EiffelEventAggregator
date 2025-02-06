@@ -3,22 +3,21 @@ import json
 import time
 import matplotlib.pyplot as plt
 
-# Neo4j connection details
-NEO4J_URI = "bolt://localhost:7690"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "demodemo"
+# Memgraph connection details
+MEMGRAPH_URI = "bolt://localhost:7687"
+MEMGRAPH_AUTH = ("", "")  # No authentication by default
 EVENT_FILE = "events_new.json"
 
 class EventInserter:
-    def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, uri, auth):
+        self.driver = GraphDatabase.driver(uri, auth=auth)
 
     def close(self):
         self.driver.close()
 
     def insert_event_with_links(self, event):
         """Insert an event and its links in one transaction to ensure consistency."""
-        with self.driver.session() as session:
+        with self.driver.session(database="memgraph") as session:
             session.execute_write(self._insert_event_with_links, event)
 
     @staticmethod
@@ -44,7 +43,7 @@ def read_events_from_file(filename):
         return json.load(f)
 
 if __name__ == "__main__":
-    inserter = EventInserter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+    inserter = EventInserter(MEMGRAPH_URI, MEMGRAPH_AUTH)
 
     events = read_events_from_file(EVENT_FILE)
     if not events:
