@@ -1,8 +1,5 @@
 
 package mypackage;
-
-import java.util.Objects;
-
 import java.util.List;
 
 public class Event {
@@ -21,7 +18,6 @@ public class Event {
     public List<Link> getLinks() { return links; }
     public void setLinks(List<Link> links) { this.links = links; }
 
-    // --- Nested Classes (Non-static) ---
     public class Meta {
         private long time;
         private String id;
@@ -128,7 +124,6 @@ public class Event {
         public void setRepoUri(String repoUri) { this.repoUri = repoUri; }
     }
 
-    // --- Updated Link class ---
     public static class Link {
         private String target;
         private String type;
