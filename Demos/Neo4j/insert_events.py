@@ -2,12 +2,17 @@ from neo4j import GraphDatabase
 import json
 import time
 import matplotlib.pyplot as plt
+import os
 
 # Neo4j connection details
 NEO4J_URI = "bolt://localhost:7690"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "demodemo"
 EVENT_FILE = "events_new.json"
+
+def clear_terminal():
+    """Clears the terminal screen."""
+    os.system("cls" if os.name == "nt" else "clear")  # Windows: cls | Linux/Mac: clear
 
 class EventInserter:
     def __init__(self, uri, user, password):
@@ -69,6 +74,7 @@ if __name__ == "__main__":
                 event_count = 0
                 start_time = time.time()
 
+                clear_terminal()
                 print(f"\r✅ Inserted {i}/{len(events)} events | {eps:.2f} events/sec", end="", flush=True)
 
         print("\n✅ All events inserted successfully.")

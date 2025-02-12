@@ -40,3 +40,4 @@ flink-logs/
 
 # macOS system files
 .DS_Store
+*.json

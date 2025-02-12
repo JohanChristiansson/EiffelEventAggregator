@@ -2,11 +2,16 @@ from neo4j import GraphDatabase
 import json
 import time
 import matplotlib.pyplot as plt
+import os
 
 # Memgraph connection details
 MEMGRAPH_URI = "bolt://localhost:7687"
 MEMGRAPH_AUTH = ("", "")  # No authentication by default
 EVENT_FILE = "events_new.json"
+
+def clear_terminal():
+    """Clears the terminal screen."""
+    os.system("cls" if os.name == "nt" else "clear") 
 
 class EventInserter:
     def __init__(self, uri, auth):
@@ -68,6 +73,7 @@ if __name__ == "__main__":
                 event_count = 0
                 start_time = time.time()
 
+                clear_terminal()
                 print(f"\r✅ Inserted {i}/{len(events)} events | {eps:.2f} events/sec", end="", flush=True)
 
         print("\n✅ All events inserted successfully.")
@@ -85,3 +91,21 @@ if __name__ == "__main__":
         plt.show()
     else:
         print("⚠️ Not enough data to generate a meaningful plot.")
+
+
+
+"""
+TRIGGER EXAMPLE
+
+CREATE TRIGGER eiffel_artifact_trigger
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WITH n
+    WHERE n.type = "EiffelArtifactCreatedEvent"
+    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type: "EiffelFlowContextDefinedEvent"})
+    WITH n.id AS event_id
+    CREATE (t:Trigger {from: event_id});
+
+"""

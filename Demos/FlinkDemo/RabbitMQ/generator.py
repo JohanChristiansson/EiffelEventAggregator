@@ -152,8 +152,8 @@ def create_event():
                 if context_events:  
                     context_event = random.choice(context_events)
                     link = {
-                        "id": subject_event["meta"]["id"],  
-                        "type": "SUBJECT"
+                        "id": context_event["meta"]["id"],  
+                        "type": "CONTEXT_DEFINED"
                     }
                     # link = {
                     #     "target": context_event["meta"]["id"],
@@ -181,7 +181,7 @@ def flatten_event(event):
 
 if __name__ == "__main__":
     try:
-        while 504000 > len(created_events):
+        while 1000000 > len(created_events):
             create_event()
             #time.sleep(0.2) 
             if len(created_events) % 10000 == 0:
