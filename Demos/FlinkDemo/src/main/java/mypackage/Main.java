@@ -2,6 +2,8 @@ package mypackage;
 
 import mypackage.source.Source;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternSelectFunction;
 import org.apache.flink.cep.PatternStream;
@@ -11,9 +13,19 @@ import org.apache.flink.cep.pattern.conditions.SimpleCondition;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.flink.streaming.api.datastream.AllWindowedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.functions.windowing.WindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
+import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,13 +41,13 @@ public class Main {
 
         //Config
         Configuration config = new Configuration();
-        config.set(TaskManagerOptions.CPU_CORES, 2.0);
+        config.set(TaskManagerOptions.CPU_CORES, 4.0);
         config.set(TaskManagerOptions.NUM_TASK_SLOTS, 2);
-        config.set(TaskManagerOptions.TASK_HEAP_MEMORY, MemorySize.ofMebiBytes(1024));
-        config.set(TaskManagerOptions.TASK_OFF_HEAP_MEMORY, MemorySize.ofMebiBytes(512));
-        config.set(TaskManagerOptions.NETWORK_MEMORY_MIN, MemorySize.ofMebiBytes(64));
-        config.set(TaskManagerOptions.NETWORK_MEMORY_MAX, MemorySize.ofMebiBytes(64));
-        config.set(TaskManagerOptions.MANAGED_MEMORY_SIZE, MemorySize.ofMebiBytes(128));
+        config.set(TaskManagerOptions.TASK_HEAP_MEMORY, MemorySize.ofMebiBytes(8192));
+        config.set(TaskManagerOptions.TASK_OFF_HEAP_MEMORY, MemorySize.ofMebiBytes(2048));
+        config.set(TaskManagerOptions.NETWORK_MEMORY_MIN, MemorySize.ofMebiBytes(512));
+        config.set(TaskManagerOptions.NETWORK_MEMORY_MAX, MemorySize.ofMebiBytes(512));
+        config.set(TaskManagerOptions.MANAGED_MEMORY_SIZE, MemorySize.ofMebiBytes(1024));
 
         //Start flink environment
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -59,6 +71,8 @@ public class Main {
             }
         }).filter(Objects::nonNull);
 
+
+
         //What does The watermark do? Specifies that events can arrive out of order by up to x seconds.
         //Wait for events to arrive until x seconds has passed to handle events in the correct order, downside
         //Causes delay.
@@ -67,37 +81,22 @@ public class Main {
                 WatermarkStrategy.<Event>forBoundedOutOfOrderness(Duration.ofSeconds(1))
                         .withTimestampAssigner((event, timestamp) -> event.getMeta().getTime())
                         .withIdleness(Duration.ofSeconds(1)) // Adjust the duration as needed
+
         );
 
-        //First pattern, Link ArtC to FCD with Flow_Context
-        Pattern<Event, ?> artifactCreated = Pattern.<Event>begin("FCD")
-                .where(SimpleCondition.of(event -> event.getMeta().getType().equals("EiffelFlowContextDefinedEvent")))
-                .followedByAny("ArtC")
-                .where(new IterativeCondition<Event>() {
+        dataStream = dataStream
+                .windowAll(TumblingProcessingTimeWindows.of(Time.seconds(1)))
+                .apply(new AllWindowFunction<Event, Event, TimeWindow>() {
                     @Override
-                    public boolean filter(Event event, Context<Event> ctx) throws Exception {
-                        //Exit early due to wrong type or missing links
-                        if (event.getLinks().isEmpty() || !Objects.equals(event.getMeta().getType(), "EiffelArtifactCreatedEvent")){
-                            return false;
+                    public void apply(TimeWindow window, Iterable<Event> input, Collector<Event> out) throws Exception {
+                        for (Event event : input) {
+                            out.collect(event);
                         }
-                        //Verify correct link
-                        Event previousEvent = ctx.getEventsForPattern("FCD").iterator().next();
-                        return HelpFunctions.linksToEvent(event, previousEvent, "CONTEXT_DEFINED");
                     }
                 });
 
-        PatternStream<Event> artifactCreatedStream = CEP.pattern(dataStream, artifactCreated);
+        //First pattern, Link ArtC to FCD with Flow_Context
 
-        DataStream<String> result = artifactCreatedStream.select(
-                (PatternSelectFunction<Event, String>) patternMatch -> {
-                    Event start = patternMatch.get("FCD").get(0);
-                    Event middle = patternMatch.get("ArtC").get(0);
-
-                    return String.format("Detected sequence: FCD(" + start.getMeta().getId() + ") ArtC("+ middle.getMeta().getId() + ")");
-                }
-        );
-
-        result.print("Found Artifact created");
 
         //Artifact Published pattern
         //Have three valid orders of events
@@ -108,7 +107,7 @@ public class Main {
         //If flink is selected to move on with then explore that.
         Pattern<Event, ?> artifactPublishedCase1Pattern = Pattern.<Event>begin("FCD1")
                 .where(SimpleCondition.of(event -> event.getMeta().getType().equals("EiffelFlowContextDefinedEvent")))
-                .followedByAny("ArtC") // ArtC follows FCD1
+                .followedByAny("ArtC")
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
@@ -121,7 +120,7 @@ public class Main {
                 })
                 .followedByAny("FCD2") // FCD2 follows ArtC
                 .where(SimpleCondition.of(event -> event.getMeta().getType().equals("EiffelFlowContextDefinedEvent")))
-                .followedByAny("ArtP") // ArtP must link to both ArtC & FCD2
+                .followedByAny("ArtP")
                 .where(new IterativeCondition<Event>() {
                     @Override
                     public boolean filter(Event event, Context<Event> ctx) throws Exception {
@@ -135,16 +134,16 @@ public class Main {
                         boolean linksToFCD2 = false;
 
                         for (Event.Link link : event.getLinks()) {
-                            if (artC.getMeta().getId().equals(link.getTarget())) {
+                            if (artC.getMeta().getId().equals(link.getId())) {
                                 linksToArtC = true;
                             }
-                            if (fcd2.getMeta().getId().equals(link.getTarget())) {
+                            if (fcd2.getMeta().getId().equals(link.getId())) {
                                 linksToFCD2 = true;
                             }
                         }
                         return linksToArtC && linksToFCD2;
                     }
-                });
+                }).within(Time.seconds(1));
 
         //Case 2: FCD2 → FCD1 → ArtC → ArtP
         //Case 3: FCD1 → FCD2 → ArtC → ArtP
@@ -164,8 +163,8 @@ public class Main {
                         boolean linksToFcd1;
                         boolean linksToFcd2;
                         for (Event.Link link : event.getLinks()) {
-                            linksToFcd1 = fcd1.getMeta().getId().equals(link.getTarget());
-                            linksToFcd2 = fcd2.getMeta().getId().equals(link.getTarget());
+                            linksToFcd1 = fcd1.getMeta().getId().equals(link.getId());
+                            linksToFcd2 = fcd2.getMeta().getId().equals(link.getId());
                             if ((linksToFcd1 || linksToFcd2) && link.getType().equals("CONTEXT_DEFINED")) {
                                 return true;
                             }
@@ -208,7 +207,7 @@ public class Main {
                         //Did not link to the correct fcd
                         return false;
                     }
-                });
+                }).within((Time.seconds(1)));
 
         //Handles both patterns for Artifact published and then merge the output streams.. Not very pretty.
         //Can be handled by creating larger complex pattern with multiple ors.
@@ -243,10 +242,40 @@ public class Main {
         DataStream<String> mergedStream = ArtifactPublishedStream1.union(ArtifactPublishedStream2);
         mergedStream.print("Found Artifact Published");
 
+        Pattern<Event, ?> artifactCreated = Pattern.<Event>begin("FCD")
+                .where(SimpleCondition.of(event -> event.getMeta().getType().equals("EiffelFlowContextDefinedEvent")))
+                .followedByAny("ArtC")
+                .where(new IterativeCondition<Event>() {
+                    @Override
+                    public boolean filter(Event event, Context<Event> ctx) throws Exception {
+                        //Exit early due to wrong type or missing links
+                        if (event.getLinks().isEmpty() || !Objects.equals(event.getMeta().getType(), "EiffelArtifactCreatedEvent")){
+                            return false;
+                        }
+                        //Verify correct link
+                        Event previousEvent = ctx.getEventsForPattern("FCD").iterator().next();
+                        return HelpFunctions.linksToEvent(event, previousEvent, "CONTEXT_DEFINED");
+                    }
+                }).within(Time.seconds(1));
+
+        PatternStream<Event> artifactCreatedStream = CEP.pattern(dataStream, artifactCreated);
+
+        DataStream<String> result = artifactCreatedStream.select(
+                (PatternSelectFunction<Event, String>) patternMatch -> {
+                    Event start = patternMatch.get("FCD").get(0);
+                    Event middle = patternMatch.get("ArtC").get(0);
+
+                    return String.format("Detected sequence: FCD(" + start.getMeta().getId() + ") ArtC("+ middle.getMeta().getId() + ")");
+                }
+        );
+
+        result.print("Found Artifact created");
+
         // Execute the Flink job
         LOG.warn("Execute program");
         env.execute("Flink RabbitMQ Consumer Job");
     }
+
 }
 
 
