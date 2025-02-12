@@ -47,13 +47,11 @@
             <artifactId>slf4j-api</artifactId>
             <version>2.0.0</version> <!-- or the appropriate version -->
         </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.0</version> <!-- or the appropriate version -->
         </dependency>
-
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-table-api-java</artifactId>
@@ -74,6 +72,30 @@
     <build>
         <plugins>
             <!-- Maven Jar Plugin to specify the main class in the manifest -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase> <!-- Execute in the package phase -->
+                        <goals>
+                            <goal>shade</goal> <!-- This goal creates the "fat" JAR -->
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom> <!-- Optional: avoids creating a reduced POM -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact> <!-- Includes all dependencies -->
+                                    <excludes>
+                                        <!-- Optional: Exclude specific dependencies from the fat JAR if needed -->
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -103,6 +125,7 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
 </project>
