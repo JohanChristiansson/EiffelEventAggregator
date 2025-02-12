@@ -41,6 +41,7 @@ flink-1.20.0
 
 # macOS system files
 .DS_Store
+*.json
 
 #Data files
 events.*
