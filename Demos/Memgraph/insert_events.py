@@ -108,4 +108,83 @@ EXECUTE
     WITH n.id AS event_id
     CREATE (t:Trigger {from: event_id});
 
+CREATE TRIGGER eiffel_artifact_published_trigger
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WITH n
+    WHERE n.type = "EiffelArtifactPublishedEvent"
+    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type: "EiffelFlowContextDefinedEvent"})
+    MATCH (n)-[:ARTIFACT]->(c:Event {type: "EiffelArtifactCreatedEvent})
+    MATCH (c)-[:CONTEXT_DEFINED]->(f:Event {type: "EiffelFlowContextDefinedEvent"})
+    WHERE e <> f
+    WITH n.id AS ArtP
+    WITH e.id AS FCD1
+    WITH f.id AS FCD2
+    WITH c.id AS ArtC
+    CALL trigger.genericProcedure(ArtP, ArtC, FCD1, FCD2, "ArtifactPublished")
+    YIELD result
+    RETURN result;
+
+CREATE TRIGGER eiffel_CLM_trigger
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WITH n
+    WHERE n.type = "EiffelConfidenceLevelModified"
+    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type: "EiffelFlowContextDefinedEvent"})
+    MATCH (n)-[:SUBJECT]->(c:Event {type: "EiffelArtifactCreatedEvent})
+    MATCH (c)-[:CONTEXT_DEFINED]->(f:Event {type: "EiffelFlowContextDefinedEvent"})
+    WHERE e <> f
+    WITH n.id AS CLM
+    WITH e.id AS FCD1
+    WITH f.id AS FCD2
+    WITH c.id AS ArtC
+    CALL trigger.genericProcedure(CLM, ArtC, FCD1, FCD2, "CLReached")
+    YIELD result
+    RETURN result;
+
+
+    
+//TEST CASE STARTED AGGREGATION
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WHERE n.type = "EiffelTestCaseStartedEvent"
+    MATCH (n)-[:TEST_CASE_EXECUTION]->(t:Event {type: "EiffelTestCaseTriggeredEvent"})-[:CONTEXT]->(s:Event {type: "EiffelTestSuiteStartedEvent"})
+    WITH n.id AS TCS
+    WITH t.if AS TCT
+    WITH s.id AS Suite
+    CALL trigger.genericProcedure("TestCaseStarted", TCS, TCT, Suite)
+
+//TEST CASE FINISHED AGGREGATION
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WHERE n.type = "EiffelTestCaseFinishedEvent"
+    MATCH (n)-[:TEST_CASE_EXECUTION]->(t:Event {type: "EiffelTestCaseTriggeredEvent"})
+    MATCH (t)-[:CONTEXT]->(s:Event {type: "EiffelTestSuiteStartedEvent"})
+    WITH n.id AS TCF
+    WITH t.if AS TCT
+    WITH s.id AS Suite
+    CALL trigger.genericProcedure("TestCaseStarted", TCF, TCT, Suite)
+
+//TEST SUITE FINISHED AGGREGATION
+ON CREATE
+AFTER COMMIT
+EXECUTE
+    UNWIND createdVertices AS n
+    WHERE n.type = "EiffelTestSuiteFinishedEvent"
+    MATCH (n)-[:TEST_SUITE_EXECUTION]->(t:Event {type: "EiffelTestSuiteStartedEvent"})
+    OPTIONAL MATCH (t)<-[:CONTEXT]-(a:Event {type: "EiffelTestCaseTriggeredEvent"})
+    OPTIONAL MATCH (a)<-[:TEST_CASE_EXECUTION]-(b:Event)
+    WITH COLLECT(a) AS TestCases, COLLECT(b) AS TestExecutions
+    WITH n.id AS TSF
+    WITH t.if AS TSS
+    WITH s.id AS Suite
+    CALL trigger.genericProcedure("TestCaseStarted", TestCases, TestExecutions, TSF, TSS, Suite)
 """

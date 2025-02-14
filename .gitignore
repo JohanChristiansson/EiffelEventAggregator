@@ -11,6 +11,9 @@ replay_pid*
 # Python virtual environment (if applicable)
 venv/
 
+# Python cache
+__pycache__
+
 # Ignore IntelliJ IDEA project files
 .idea/
 .idea/modules.xml

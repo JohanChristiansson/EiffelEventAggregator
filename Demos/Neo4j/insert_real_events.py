@@ -1,8 +1,16 @@
+#################################################
+#                                               #
+#   Attempt at creating an inserter to neo4j    #
+#               With real data                  #
+#                                               #
+#################################################
+
+
 from neo4j import GraphDatabase
 import json
 import time
-import matplotlib.pyplot as plt
 import os
+import matplotlib.pyplot as plt
 
 # Neo4j connection details
 NEO4J_URI = "bolt://localhost:7691"
@@ -10,9 +18,12 @@ NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "demodemo"
 EVENT_FILE = "events_new.json"
 
+# Delay between each insert to simulate a real-time stream (seconds)
+#EVENT_DELAY = 0.1 
+
 def clear_terminal():
     """Clears the terminal screen."""
-    os.system("cls" if os.name == "nt" else "clear")  # Windows: cls | Linux/Mac: clear
+    os.system("cls" if os.name == "nt" else "clear")
 
 class EventInserter:
     def __init__(self, uri, user, password):
@@ -21,26 +32,35 @@ class EventInserter:
     def close(self):
         self.driver.close()
 
-    def insert_event_with_links(self, event):
-        """Insert an event and its links in one transaction to ensure consistency."""
+    def insert_event(self, event):
+        """Insert a single event and its relationships."""
         with self.driver.session() as session:
-            session.execute_write(self._insert_event_with_links, event)
+            session.execute_write(self._insert_event, event)
 
     @staticmethod
-    def _insert_event_with_links(tx, event):
-        """Cypher query to insert an event along with its links in a single transaction."""
+    def _insert_event(tx, event):
+        """Inserts an event and its relationships using UNWIND for efficiency."""
         query = """
-        MERGE (e:Event {id: $id})
-        SET e.type = $type, e.time = $time
+        MERGE (e:Event {id: $id})  
+        SET e.type = $type,
+            e.timestamp = $timestamp,
+            e.jsonData = apoc.convert.toJson($jsonData)
         """
-        tx.run(query, id=event["id"], type=event["type"], time=event["time"])
+        tx.run(query, 
+            id=event["meta"]["id"], 
+            type=event["meta"]["type"], 
+            timestamp=event["meta"]["time"], 
+            jsonData=event)
 
-        for link in event["links"]:
-            link_query = f"""
-            MATCH (from:Event {{id: $from_id}}), (to:Event {{id: $to_id}})
-            MERGE (from)-[:{link["type"]}]->(to)
-            """
-            tx.run(link_query, from_id=event["id"], to_id=link["id"])
+        # Single Cypher query to create all relationships in one go
+        link_query = """
+        UNWIND $links AS link
+        MATCH (source:Event {id: $from_id})
+        MATCH (target:Event {id: link.target})
+        MERGE (source)-[r:`RELATION` {type: link.type}]->(target)
+        """
+        tx.run(link_query, from_id=event["meta"]["id"], links=event.get("links", []))
+
 
 # Read events from file
 def read_events_from_file(filename):
@@ -59,16 +79,16 @@ if __name__ == "__main__":
         event_count = 0
         eps_history = []
         node_count_history = []
-        update_interval = 2
+        update_interval = 2  # Update stats every 2 seconds
 
         for i, event in enumerate(events, 1):
-            if (i<=500000):
-                continue
-            #if (i>500000):
-            #    break
-            inserter.insert_event_with_links(event)
+            inserter.insert_event(event)
             event_count += 1
 
+            # Simulate real-time stream delay
+            #time.sleep(EVENT_DELAY)
+
+            # Print real-time stats
             elapsed_time = time.time() - start_time
             if elapsed_time >= update_interval:
                 eps = event_count / elapsed_time
@@ -79,9 +99,9 @@ if __name__ == "__main__":
                 start_time = time.time()
 
                 clear_terminal()
-                print(f"\r✅ Inserted {i}/{len(events)} events | {eps:.2f} events/sec", end="", flush=True)
+                print(f"\rInserted {i}/{len(events)} events | {eps:.2f} events/sec", end="", flush=True)
 
-        print("\n✅ All events inserted successfully.")
+        print("\nAll events inserted successfully.")
 
     inserter.close()
 
