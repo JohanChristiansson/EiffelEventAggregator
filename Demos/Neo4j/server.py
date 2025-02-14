@@ -16,7 +16,15 @@ log = logging.getLogger('werkzeug')
 PRINT = True
 
 app = Flask(__name__)
+
 ARTIFACT_CREATED_COUNTER = 0
+ARTIFACT_PUBLISHED_COUNTER = 0
+CLM_COUNTER = 0
+IMPOSSIBLE_COUNTER = 0
+TEST_CASE_STARTED_COUNTER = 0
+TEST_CASE_FINISHED_COUNTER = 0
+TEST_SUITE_FINISHED_COUNTER = 0
+
 @app.route('/event_ArtC', methods=['POST'])
 def event_ArtC():
     """
@@ -26,7 +34,7 @@ def event_ArtC():
     'send_http_request',
     'WITH [n IN $createdNodes WHERE n.type = "EiffelArtifactCreatedEvent"] AS nodes
     UNWIND nodes AS n
-    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type:"EiffelFlowContextDefinedEvent"})
+    MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"})
     CALL apoc.load.jsonParams(                                                                                                                         
         "http://localhost:5000/event_ArtC",                                                                                                                 
         {`Content-Type`: "application/json"},                                                                                                          
@@ -53,7 +61,6 @@ def event_ArtC():
     return jsonify({"status": "alert received"}), 200
 
 
-ARTIFACT_PUBLISHED_COUNTER = 0
 @app.route('/event_ArtP', methods=['POST'])
 def event_ArtP():
     """
@@ -63,8 +70,8 @@ def event_ArtP():
     'artifact_published_trigger',
     'WITH [n IN $createdNodes WHERE n.type = "EiffelArtifactPublishedEvent"] AS nodes
     UNWIND nodes AS n 
-    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type:"EiffelFlowContextDefinedEvent"}) 
-    MATCH (n)-[:ARTIFACT]->(c:Event {type:"EiffelArtifactCreatedEvent"})-[:CONTEXT_DEFINED]->(f:Event {type:"EiffelFlowContextDefinedEvent"})
+    MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"}) 
+    MATCH (n)-[:ARTIFACT]->(c:Event {type:"EiffelArtifactCreatedEvent"})-[:FLOW_CONTEXT]->(f:Event {type:"EiffelFlowContextDefinedEvent"})
     WHERE e <> f
     CALL apoc.load.jsonParams(
         "http://localhost:5000/event_ArtP", 
@@ -94,7 +101,6 @@ def event_ArtP():
     return jsonify({"status": "alert received"}), 200
 
 
-CLM_COUNTER = 0
 @app.route('/event_CLM', methods=['POST'])
 def event_CLM():
     """
@@ -105,8 +111,8 @@ def event_CLM():
     '
     WITH [n IN $createdNodes WHERE n.type = "EiffelConfidenceLevelModified"] AS nodes
     UNWIND nodes AS n 
-    MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type:"EiffelFlowContextDefinedEvent"}) 
-    MATCH (n)-[:SUBJECT]->(c:Event {type:"EiffelArtifactCreatedEvent"})-[:CONTEXT_DEFINED]->(f:Event {type:"EiffelFlowContextDefinedEvent"})
+    MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"}) 
+    MATCH (n)-[:SUBJECT]->(c:Event {type:"EiffelArtifactCreatedEvent"})-[:FLOW_CONTEXT]->(f:Event {type:"EiffelFlowContextDefinedEvent"})
     WHERE e <> f
     CALL apoc.load.jsonParams(
         "http://localhost:5000/event_CLM", 
@@ -131,7 +137,7 @@ def event_CLM():
     #print(CLM_COUNTER)
     return jsonify({"status": "alert received"}), 200
 
-IMPOSSIBLE_COUNTER = 0
+
 @app.route('/event_impossible', methods=['POST'])
 def event_impossible():
     """
@@ -145,9 +151,9 @@ def event_impossible():
         CALL apoc.do.case(
             [
                 n.type = "EiffelConfidenceLevelModified", 
-                "MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
-                MATCH (n)-[:SUBJECT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:CONTEXT_DEFINED]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
-                MATCH (c)<-[:ARTIFACT]-(d:Event {type:\\\"EiffelArtifactPublishedEvent\\\"})-[:CONTEXT_DEFINED]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
+                "MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
+                MATCH (n)-[:SUBJECT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:FLOW_CONTEXT]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
+                MATCH (c)<-[:ARTIFACT]-(d:Event {type:\\\"EiffelArtifactPublishedEvent\\\"})-[:FLOW_CONTEXT]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
                 WHERE e <> f AND e <> g AND f <> g
                 CALL apoc.load.jsonParams(
                     \\\"http://localhost:5000/event_impossible\\\", 
@@ -157,9 +163,9 @@ def event_impossible():
                 RETURN NULL",
 
                 n.type = "EiffelArtifactPublishedEvent", 
-                "MATCH (n)-[:CONTEXT_DEFINED]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
-                MATCH (n)-[:ARTIFACT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:CONTEXT_DEFINED]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
-                MATCH (c)<-[:SUBJECT]-(d:Event {type:\\\"EiffelConfidenceLevelModified\\\"})-[:CONTEXT_DEFINED]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
+                "MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
+                MATCH (n)-[:ARTIFACT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:FLOW_CONTEXT]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
+                MATCH (c)<-[:SUBJECT]-(d:Event {type:\\\"EiffelConfidenceLevelModified\\\"})-[:FLOW_CONTEXT]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
                 WHERE e <> f AND e <> g AND f <> g
                 CALL apoc.load.jsonParams(
                     \\\"http://localhost:5000/event_impossible\\\", 
@@ -193,6 +199,118 @@ def event_impossible():
     #print(IMPOSSIBLE_COUNTER)
     return jsonify({"status": "alert received"}), 200
 
+
+@app.route('/event_TestCaseStarted', methods=['POST'])
+def event_test_case_started():
+    """
+    :use system;
+    CALL apoc.trigger.install(
+        'neo4j',
+        'test_case_started_aggregation',
+        'WITH [n IN $createdNodes WHERE n.type = "EiffelTestCaseStartedEvent"] AS nodes
+        UNWIND nodes AS n
+        MATCH (n)-[:TEST_CASE_EXECUTION]->(t:Event {type: "EiffelTestCaseTriggeredEvent"})
+        MATCH (t)-[:CONTEXT]->(s:Event {type: "EiffelTestSuiteStartedEvent"})
+        CALL apoc.load.jsonParams(                                                                                                                          
+            "http://localhost:5000/TestCaseStarted",
+            {`Content-Type`: "application/json"},
+            apoc.convert.toJson({TCS: n.id, TCT: t.id, Suite: s.id})     
+        ) YIELD value
+        RETURN NULL',
+        {phase: "afterAsync"}
+    );
+    """
+    global TEST_CASE_STARTED_COUNTER, PRINT
+    data = request.json
+
+    # Extract relevant fields
+    TCS = data.get("TCS")
+    TCT = data.get("TCT")
+    Suite = data.get("Suite")
+
+    TEST_CASE_STARTED_COUNTER += 1
+
+    if PRINT and TCS and TCT and Suite:
+        print(f"\033[32mALERT: TestCaseStarted {TCS} (Triggered: {TCT}, Suite: {Suite})\033[0m")
+
+    return jsonify({"status": "TestCaseStarted event received"}), 200
+
+
+@app.route('/event_TestCaseFinished', methods=['POST'])
+def event_test_case_finished():
+    """
+    :use system;
+    CALL apoc.trigger.install(
+        'neo4j',
+        'test_case_finished_aggregation',
+        'WITH [n IN $createdNodes WHERE n.type = "EiffelTestCaseFinishedEvent"] AS nodes
+        UNWIND nodes AS n
+        MATCH (n)-[:TEST_CASE_EXECUTION]->(t:Event {type: "EiffelTestCaseTriggeredEvent"})
+        MATCH (t)-[:CONTEXT]->(s:Event {type: "EiffelTestSuiteStartedEvent"})
+        CALL apoc.load.jsonParams(                                                                                                                          
+            "http://localhost:5000/TestCaseFinished",
+            {`Content-Type`: "application/json"},
+            apoc.convert.toJson({TCF: n.id, TCT: t.id, Suite: s.id})     
+        ) YIELD value
+        RETURN NULL',
+        {phase: "afterAsync"}
+    );
+    """
+    global TEST_CASE_FINISHED_COUNTER, PRINT
+    data = request.json
+
+    # Extract relevant fields
+    TCF = data.get("TCF")
+    TCT = data.get("TCT")
+    Suite = data.get("Suite")
+
+    TEST_CASE_FINISHED_COUNTER += 1
+
+    if PRINT and TCF and TCT and Suite:
+        print(f"\033[31mALERT: TestCaseFinished {TCF} (Triggered: {TCT}, Suite: {Suite})\033[0m")
+
+    return jsonify({"status": "TestCaseFinished event received"}), 200
+
+
+@app.route('/event_TestSuiteFinished', methods=['POST'])
+def event_test_suite_finished():
+    """
+    :use system;
+    CALL apoc.trigger.install(
+        'neo4j',
+        'test_suite_finished_aggregation',
+        'WITH [n IN $createdNodes WHERE n.type = "EiffelTestSuiteFinishedEvent"] AS nodes
+        UNWIND nodes AS n
+        MATCH (n)-[:TEST_SUITE_EXECUTION]->(t:Event {type: "EiffelTestSuiteStartedEvent"})
+        OPTIONAL MATCH (t)<-[:CONTEXT]-(a:Event {type: "EiffelTestCaseTriggeredEvent"})
+        OPTIONAL MATCH (a)<-[:TEST_CASE_EXECUTION]-(b:Event)
+        WITH n.id AS TSF, t.id AS TSS, COLLECT(a) AS TestCases, COLLECT(b) AS TestExecutions
+        CALL apoc.load.jsonParams(                                                                                                                          
+            "http://localhost:5000/TestSuiteFinished",
+            {`Content-Type`: "application/json"},
+            apoc.convert.toJson({TestCases: TestCases, TestExecutions: TestExecutions, TSF: TSF, TSS: TSS})     
+        ) YIELD value
+        RETURN NULL',
+        {phase: "afterAsync"}
+    );
+    """
+    global TEST_SUITE_FINISHED_COUNTER, PRINT
+    data = request.json
+
+    # Extract relevant fields
+    TSF = data.get("TSF")
+    TSS = data.get("TSS")
+    TestCases = data.get("TestCases", [])
+    TestExecutions = data.get("TestExecutions", [])
+
+    TEST_SUITE_FINISHED_COUNTER += 1
+
+    if PRINT and TSF and TSS:
+        print(f"\033[34mALERT: TestSuiteFinished {TSF} (Started: {TSS})\033[0m")
+        print(f"\033[34m  - Test Cases: {len(TestCases)}\033[0m")
+        print(f"\033[34m  - Test Executions: {len(TestExecutions)}\033[0m")
+
+    return jsonify({"status": "TestSuiteFinished event received"}), 200
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Neo4j connection details
-NEO4J_URI = "bolt://localhost:7690"
+NEO4J_URI = "bolt://localhost:7691"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "demodemo"
 EVENT_FILE = "events_new.json"
@@ -62,6 +62,10 @@ if __name__ == "__main__":
         update_interval = 2
 
         for i, event in enumerate(events, 1):
+            if (i<=500000):
+                continue
+            #if (i>500000):
+            #    break
             inserter.insert_event_with_links(event)
             event_count += 1
 
