@@ -13,7 +13,9 @@ def fetch_page(url, page_no, page_size):
  
     full_url = f"{url}?pageNo={page_no}&pageSize={page_size}"
     try:
+        print(full_url)
         response = requests.get(full_url)
+        
         response.raise_for_status()
         return response.json()["items"], response.json()["totalNumberItems"]
     except requests.RequestException as e:
@@ -28,6 +30,7 @@ def get_new_events(url, newer_page_no, older_page_no, page_size, previous_page_d
 
     newer_events, num_events = fetch_page(url, newer_page_no, page_size)
     #If no new events were added no need to check previous page
+    #
     if num_events - prev_num_events > page_size and prev_num_events != 0:
         print("Number of new events were more than an entire page size. Might have missed some events. This will most likely never happen", num_events, prev_num_events)
     if (num_events == prev_num_events) or (prev_num_events == 0):
@@ -56,10 +59,10 @@ def fetch_all_events(url, starting_page, page_size=10, output_file = "events.txt
     with open(output_file, 'w') as f:
 
     #Process pages moving upward toward page 1 (newer events)
-        while current_page > 1:
+        while current_page > 0:
             print("Retrieving new page", current_page)
             #New events is the events from last query
-            new_events = get_new_events(url, current_page - 1, current_page, page_size, new_events)
+            new_events = get_new_events(url, current_page, current_page + 1, page_size, new_events)
             current_page = current_page - 1
             #all_events = new_events + all_events
             for event in new_events:
@@ -69,11 +72,12 @@ def fetch_all_events(url, starting_page, page_size=10, output_file = "events.txt
 
 if __name__ == '__main__':
     page_size = 100000
-    base_url = os.getenv('EventRepositoryUrl')
+    base_url = os.getenv('EVENT_REPOSITORY_URL')
 
     response = requests.get(base_url)
     
     starting_page = math.ceil(response.json()["totalNumberItems"]/page_size)
+    starting_page = 2
     print(starting_page)
     
     events = fetch_all_events(base_url, starting_page, page_size)
