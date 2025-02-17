@@ -49,7 +49,7 @@ def send_events_to_rabbit(channel, current_page):
 if __name__ == '__main__':
     credentials = pika.PlainCredentials(username, password)
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=host, credentials=credentials))
+        pika.ConnectionParameters(host=host))
 
     channel = connection.channel()
     channel.queue_declare(queue=queue_name)

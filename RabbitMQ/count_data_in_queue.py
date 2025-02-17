@@ -5,14 +5,14 @@ import time
 host = "localhost"
 username = "guest"
 password = "guest"
-queue_name = "hello"  # Replace with your actual queue name
+queue_name = "neo4j"  # Replace with your actual queue name
 
 # File to log the queue lengths
 log_file = "queue_lengths.txt"
 
 # Create connection credentials and parameters
 credentials = pika.PlainCredentials(username, password)
-parameters = pika.ConnectionParameters(host=host, credentials=credentials)
+parameters = pika.ConnectionParameters(host=host)
 
 # Function to get the queue length
 def get_queue_length():

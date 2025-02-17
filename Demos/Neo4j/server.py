@@ -109,7 +109,7 @@ def event_CLM():
     'neo4j',
     'CLM_trigger',
     '
-    WITH [n IN $createdNodes WHERE n.type = "EiffelConfidenceLevelModified"] AS nodes
+    WITH [n IN $createdNodes WHERE n.type = "EiffelConfidenceLevelModifiedEvent"] AS nodes
     UNWIND nodes AS n 
     MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"}) 
     MATCH (n)-[:SUBJECT]->(c:Event {type:"EiffelArtifactCreatedEvent"})-[:FLOW_CONTEXT]->(f:Event {type:"EiffelFlowContextDefinedEvent"})
@@ -133,7 +133,7 @@ def event_CLM():
     CLM_COUNTER = CLM_COUNTER + 1
     if context_id1 != "NONE" and CLM_event_id != "NONE" and ArtC_event_id != "NONE" and context_id2 != "NONE":
         if PRINT:
-            print(f"\033[33mALERT: ConfidenceLevelModified {CLM_event_id} is linked to ContextDefinedEvent {context_id1} and ArtifactCreatedEvent {ArtC_event_id}, which links to ContextDefinedEvent {context_id2}\033[0m")
+            print(f"\033[33mALERT: ConfidenceLevelModifiedEvent {CLM_event_id} is linked to ContextDefinedEvent {context_id1} and ArtifactCreatedEvent {ArtC_event_id}, which links to ContextDefinedEvent {context_id2}\033[0m")
     #print(CLM_COUNTER)
     return jsonify({"status": "alert received"}), 200
 
@@ -146,11 +146,11 @@ def event_impossible():
         'neo4j',
         'impossible_trigger',
         '
-        WITH [n IN $createdNodes WHERE n.type IN ["EiffelConfidenceLevelModified", "EiffelArtifactPublishedEvent"]] AS nodes
+        WITH [n IN $createdNodes WHERE n.type IN ["EiffelConfidenceLevelModifiedEvent", "EiffelArtifactPublishedEvent"]] AS nodes
         UNWIND nodes AS n 
         CALL apoc.do.case(
             [
-                n.type = "EiffelConfidenceLevelModified", 
+                n.type = "EiffelConfidenceLevelModifiedEvent", 
                 "MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
                 MATCH (n)-[:SUBJECT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:FLOW_CONTEXT]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
                 MATCH (c)<-[:ARTIFACT]-(d:Event {type:\\\"EiffelArtifactPublishedEvent\\\"})-[:FLOW_CONTEXT]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
@@ -165,7 +165,7 @@ def event_impossible():
                 n.type = "EiffelArtifactPublishedEvent", 
                 "MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"}) 
                 MATCH (n)-[:ARTIFACT]->(c:Event {type:\\\"EiffelArtifactCreatedEvent\\\"})-[:FLOW_CONTEXT]->(f:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
-                MATCH (c)<-[:SUBJECT]-(d:Event {type:\\\"EiffelConfidenceLevelModified\\\"})-[:FLOW_CONTEXT]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
+                MATCH (c)<-[:SUBJECT]-(d:Event {type:\\\"EiffelConfidenceLevelModifiedEvent\\\"})-[:FLOW_CONTEXT]->(g:Event {type:\\\"EiffelFlowContextDefinedEvent\\\"})
                 WHERE e <> f AND e <> g AND f <> g
                 CALL apoc.load.jsonParams(
                     \\\"http://localhost:5000/event_impossible\\\", 
@@ -195,7 +195,7 @@ def event_impossible():
     IMPOSSIBLE_COUNTER = IMPOSSIBLE_COUNTER+ 1
     if context_id1 != "NONE" and CLM_event_id != "NONE" and ArtP_event_id != "NONE" and ArtC_event_id != "NONE" and context_id2 != "NONE" and context_id3 != "NONE":
         if PRINT:
-            print(f"\033[35mALERT: ConfidenceLevelModified {CLM_event_id} is linked to ContextDefinedEvent {context_id1} and ArtifactCreatedEvent {ArtC_event_id}, which links to ContextDefinedEvent {context_id2}. ArtifactPublishedEvent {ArtP_event_id} also links to same ArtC as well as ContextDefinedEvent {context_id3}\033[0m")
+            print(f"\033[35mALERT: ConfidenceLevelModifiedEvent {CLM_event_id} is linked to ContextDefinedEvent {context_id1} and ArtifactCreatedEvent {ArtC_event_id}, which links to ContextDefinedEvent {context_id2}. ArtifactPublishedEvent {ArtP_event_id} also links to same ArtC as well as ContextDefinedEvent {context_id3}\033[0m")
     #print(IMPOSSIBLE_COUNTER)
     return jsonify({"status": "alert received"}), 200
 
