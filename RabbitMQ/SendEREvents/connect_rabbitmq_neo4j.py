@@ -8,7 +8,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Neo4j connection details
-NEO4J_URI = "bolt://10.255.255.254:7687"
+NEO4J_URI = "bolt://localhost:7691"
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "demodemo"
 
@@ -82,7 +82,7 @@ def read_events_from_file(filename):
 def consume():
     print(host, type(host))
     credentials = pika.PlainCredentials(username, password)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host = host, heartbeat=60, credentials=credentials))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host = host, heartbeat=60))
     channel = connection.channel()
     channel.queue_declare(queue=queue_name)
     inserter = EventInserter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
@@ -106,10 +106,17 @@ def consume():
                 clear_terminal()
                 print(f"\r✅ Processed {tot_count} events | {eps:.2f} events/sec", end="", flush=True)
             ch.basic_ack(delivery_tag=method.delivery_tag) #Acknowledges that the new data has been handled
+        except KeyboardInterrupt:
+            print("Interrupted by user. Exiting...")
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
         except Exception as e:
             print("Error processing message:", e)
             # Negative acknowledge and requeue the message to retry later
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
 
     channel.basic_consume(queue = queue_name, on_message_callback = callback, auto_ack = False)
 
