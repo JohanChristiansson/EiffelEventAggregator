@@ -108,10 +108,8 @@ def consume():
             ch.basic_ack(delivery_tag=method.delivery_tag) #Acknowledges that the new data has been handled
         except KeyboardInterrupt:
             print("Interrupted by user. Exiting...")
-            try:
-                sys.exit(0)
-            except SystemExit:
-                os._exit(0)
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            raise
         except Exception as e:
             print("Error processing message:", e)
             # Negative acknowledge and requeue the message to retry later
