@@ -62,10 +62,6 @@ if __name__ == "__main__":
         update_interval = 2
 
         for i, event in enumerate(events, 1):
-            if (i<=500000):
-                continue
-            #if (i>500000):
-            #    break
             inserter.insert_event_with_links(event)
             event_count += 1
 

@@ -11,7 +11,7 @@
 from flask import Flask, request, jsonify
 import logging
 log = logging.getLogger('werkzeug')
-#log.setLevel(logging.ERROR)
+log.setLevel(logging.ERROR)
 
 PRINT = True
 
