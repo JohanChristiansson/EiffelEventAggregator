@@ -12,7 +12,9 @@ load_dotenv()
 username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
 host = os.getenv("HOST")
-queue_name = os.getenv("QUEUE_NAME")
+queue = os.getenv("QUEUE_NAME") #queue to check for adding new elements
+multiple_queues = os.getenv("QUEUE_NAMES").split(',')
+multiple_queues = list(map(str.strip, multiple_queues))
 base_url = os.getenv('EVENT_REPOSITORY_URL')
 page_size = 100000
 
@@ -27,10 +29,10 @@ def send_events_to_rabbit(channel, current_page):
     new_events = []
 
     while current_page > 0:
-        passive_queue = channel.queue_declare(queue=queue_name, passive=True)
+        passive_queue = channel.queue_declare(queue=queue, passive=True)
         queue_length = get_queue_length(passive_queue)
         if queue_length is not None:
-            print(f"Messages remaining in the queue '{queue_name}': {queue_length}")
+            print(f"Messages remaining in the queue '{queue}': {queue_length}")
 
         #If the current queue is smaller than page size, add more data to the queue
         if queue_length > page_size:
@@ -44,15 +46,20 @@ def send_events_to_rabbit(channel, current_page):
         print(len(new_events))
         for event in new_events:
             event = json.dumps(event)
-            channel.basic_publish(exchange='', routing_key=queue_name, body=event)
+            for queue_name in multiple_queues:
+                channel.basic_publish(exchange='', routing_key=queue_name, body=event)
 
 if __name__ == '__main__':
     credentials = pika.PlainCredentials(username, password)
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=host))
+        pika.ConnectionParameters(host=host, credentials=credentials))
 
+    print(multiple_queues)
     channel = connection.channel()
-    channel.queue_declare(queue=queue_name)
+    for queue_name in multiple_queues:
+        print(queue_name)
+        channel.queue_declare(queue=queue_name, durable=True)
+    exit   
     
     response = requests.get(base_url)
     starting_page = math.ceil(response.json()["totalNumberItems"]/page_size)

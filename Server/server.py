@@ -312,6 +312,11 @@ def event_test_suite_finished():
 
     return jsonify({"status": "TestSuiteFinished event received"}), 200
 
+@app.route('/test', methods=['POST'])
+def test():
+    print("Received data from EI")
+    return "ok", 200
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",debug=True, port=5000)

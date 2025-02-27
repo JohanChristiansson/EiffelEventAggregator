@@ -84,7 +84,7 @@ def consume():
     credentials = pika.PlainCredentials(username, password)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host = host, heartbeat=60))
     channel = connection.channel()
-    channel.queue_declare(queue=queue_name)
+    channel.queue_declare(queue=queue_name, durable=True)
     inserter = EventInserter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
 
     def callback(ch, method, _, body):
