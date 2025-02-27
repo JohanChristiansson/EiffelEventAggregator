@@ -11,7 +11,7 @@
 from flask import Flask, request, jsonify
 import logging
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+#log.setLevel(logging.ERROR)
 
 PRINT = True
 
@@ -25,6 +25,10 @@ TEST_CASE_STARTED_COUNTER = 0
 TEST_CASE_FINISHED_COUNTER = 0
 TEST_SUITE_FINISHED_COUNTER = 0
 
+@app.route('/trigger', methods=['POST'])
+def triggers():
+    return "yes", 200
+
 @app.route('/event_ArtC', methods=['POST'])
 def event_ArtC():
     """
@@ -36,7 +40,7 @@ def event_ArtC():
     UNWIND nodes AS n
     MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"})
     CALL apoc.load.jsonParams(                                                                                                                         
-        "http://localhost:5000/event_ArtC",                                                                                                                 
+        "http://localhost:5000/event_ArtC/",                                                                                                                 
         {`Content-Type`: "application/json"},                                                                                                          
         apoc.convert.toJson({ArtC: n.id, FCD: e.id})     
     ) YIELD value
