@@ -14,6 +14,7 @@ log = logging.getLogger('werkzeug')
 #log.setLevel(logging.ERROR)
 
 PRINT = True
+LOG = True
 
 app = Flask(__name__)
 
@@ -40,7 +41,7 @@ def event_ArtC():
     UNWIND nodes AS n
     MATCH (n)-[:FLOW_CONTEXT]->(e:Event {type:"EiffelFlowContextDefinedEvent"})
     CALL apoc.load.jsonParams(                                                                                                                         
-        "http://localhost:5000/event_ArtC/",                                                                                                                 
+        "http://localhost:5000/event_ArtC",                                                                                                                 
         {`Content-Type`: "application/json"},                                                                                                          
         apoc.convert.toJson({ArtC: n.id, FCD: e.id})     
     ) YIELD value
@@ -48,7 +49,7 @@ def event_ArtC():
     {phase:"afterAsync"}
     );
     """
-    global ARTIFACT_CREATED_COUNTER, PRINT
+    global ARTIFACT_CREATED_COUNTER, PRINT, LOG
     data = request.json  
 
     event_id = data.get("ArtC")
@@ -57,6 +58,9 @@ def event_ArtC():
     ARTIFACT_CREATED_COUNTER += 1
 
     if context_id != "NONE" and event_id != "NONE":
+        if LOG:
+            with open("event_log.txt", "a") as f:
+                f.write(f"{event_id},{context_id}\n")
         if PRINT:
             print(f"\033[32mALERT: ArtifactCreatedEvent {event_id} is linked to ContextDefinedEvent {context_id}\033[0m")
     #print(ARTIFACT_CREATED_COUNTER)
