@@ -1,6 +1,6 @@
 """
 
-Script to connect to fetch events from RabbitMQ and insert them in Neo4j
+Script to connect to fetch events from RabbitMQ and insert them in Memgraph
 Log performance and possibility to test trigger effects
 
 """
@@ -16,9 +16,9 @@ import multiprocessing
 import threading
 
 # Neo4j connection details
-NEO4J_URI = "bolt://localhost:7691" # Port can change based on system
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "demodemo"
+MEMGRAPH_URI = "bolt://localhost:7687" # Port can change based on system
+MEMGRAPH_USER = "neo4j"
+MEMGRAPH_PASSWORD = "demodemo"
 
 load_dotenv()
 
@@ -83,67 +83,49 @@ class EventInserter:
         with self.driver.session() as session:
             session.execute_write(self._insert_event, event)
     
-    # @staticmethod
-    # def _insert_event(tx, event):
-    #     """Inserts an event and its relationships using UNWIND for efficiency."""
-    #     query = """
-    #     MERGE (e:Event {id: $id})  
-    #     SET e.type = $type,
-    #         e.timestamp = $timestamp,
-    #         e.jsonData = apoc.convert.toJson($jsonData)
-    #     """
-    #     tx.run(query, 
-    #         id=event["meta"]["id"], 
-    #         type=event["meta"]["type"], 
-    #         timestamp=event["meta"]["time"], 
-    #         jsonData=event)
-    #     #print("a")
-    #     # Single Cypher query to create all relationships in one go
-    #     link_query = """
-    #     UNWIND $links AS link
-    #     MATCH (source:Event {id: $from_id})
-    #     MATCH (target:Event {id: link.target})
-    #     CALL apoc.create.relationship(source, link.type, {}, target) YIELD rel
-    #     RETURN rel;
-    #     """
-    #     tx.run(link_query, from_id=event["meta"]["id"], links=event.get("links", []))
-    
     @staticmethod
     def _insert_event(tx, event):
-        """Inserts an event and its relationships, but rolls back if any target is missing."""
+        """Inserts an event and its relationships in Memgraph."""
 
         check_query = """
         UNWIND $links AS link
         OPTIONAL MATCH (target:Event {id: link.target})  // Allows missing targets
         RETURN link.target AS target_id, target IS NOT NULL AS target_exists
         """
+
+        # Run query with a parameterized list of links
         result = list(tx.run(check_query, links=event.get("links", [])))
-        
+
+        # Extract missing targets
         missing_targets = [record["target_id"] for record in result if not record["target_exists"]]
-        
+
+        # Handle missing targets
         if missing_targets:
             raise ValueError(f"Missing target nodes: {missing_targets}. Rolling back insert.")
 
-        insert_query = """
+        
+        # Insert event node
+        query = """
         MERGE (e:Event {id: $id})  
         SET e.type = $type,
             e.timestamp = $timestamp,
-            e.jsonData = apoc.convert.toJson($jsonData)
+            e.jsonData = $jsonData
         """
-        tx.run(insert_query, 
+        tx.run(query, 
             id=event["meta"]["id"], 
             type=event["meta"]["type"], 
             timestamp=event["meta"]["time"], 
-            jsonData=event)
+            jsonData=json.dumps(event)  # Convert JSON to string manually
+        )
 
-        relationship_query = """
-        UNWIND $links AS link
-        MATCH (source:Event {id: $from_id})
-        MATCH (target:Event {id: link.target})  // Ensures target exists
-        CALL apoc.create.relationship(source, link.type, {}, target) YIELD rel
-        RETURN rel
-        """
-        tx.run(relationship_query, from_id=event["meta"]["id"], links=event.get("links", []))
+        # Insert relationships
+        for link in event.get("links", []):
+            dynamic_query = f"""
+            MATCH (source:Event {{id: $from_id}})
+            MATCH (target:Event {{id: $target_id}})
+            MERGE (source)-[:`{link['type']}`]->(target);
+            """
+            tx.run(dynamic_query, from_id=event["meta"]["id"], target_id=link["target"])
 
         #tx.commit()
         
@@ -204,19 +186,20 @@ def consume_def():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host = HOST, heartbeat=60))
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_NAME)
-    channel.basic_qos(prefetch_count=256)
-    inserter = EventInserter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+    channel.basic_qos(prefetch_count=1)
+    inserter = EventInserter(MEMGRAPH_URI, MEMGRAPH_USER, MEMGRAPH_PASSWORD)
+
+
+    log_file = "memgraph_insert_speed.log"  # File to store EPS data
+
 
     def callback(ch, method, _, body):
         try:
-            global event_count, tot_count, start_time, start_u_time, amount_inserted_since_trigger_update, total_triggers
+            global event_count, tot_count, start_time
             event_data = json.loads(body.decode('utf-8'))
             inserter.insert_event(event_data)
             event_count += 1
             tot_count += 1
-            amount_inserted_since_trigger_update += 1
-            
-            #print(event_data["meta"]["id"])
 
             # EPS calculation
             elapsed_time = time.time() - start_time
@@ -225,28 +208,14 @@ def consume_def():
                 event_count = 0
                 start_time = time.time()
 
+                # Write EPS + Total Events to file every 60 seconds
+                with open(log_file, "a") as f:
+                    f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}, {tot_count}, {eps:.2f} events/sec\n")
+
                 clear_terminal()
-                print(f"\r✅ Processed {tot_count} events | {eps:.2f} events/sec", end="", flush=True)
-
-            if TRIGGER_STRESS_TEST:
+                print(f"\r✅ {time.strftime('%Y-%m-%d %H:%M:%S')} | Total: {tot_count} | {eps:.2f} events/sec", end="", flush=True)
                 
-                if amount_inserted_since_trigger_update > AMOUNT_THRESHOLD:
-                    update_time = time.time() - start_u_time
-                    eps = amount_inserted_since_trigger_update / update_time
-                    if eps > EPS_THRESHOLD:
-                        total_triggers, trigger_addition_amount = inserter.insert_triggers(total_triggers, trigger_addition_amount, lr = LR)
-                        amount_inserted_since_trigger_update = 0
-                    else:
-                        total_triggers, trigger_addition_amount = inserter.remove_triggers(total_triggers, trigger_addition_amount, lr = LR)
-                        amount_inserted_since_trigger_update = 0
-                    start_u_time = time.time()
-
-
             ch.basic_ack(delivery_tag=method.delivery_tag) #Acknowledges that the new data has been handled
-        
-        #except ValueError as e:  # Missing relationship target
-            #print(f"❌ Requeuing event due to missing target: {e}")
-        #    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
         except KeyboardInterrupt:
             print("Interrupted by user. Exiting...")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
@@ -255,6 +224,12 @@ def consume_def():
             print("Error processing message:", e)
             # Negative acknowledge and requeue the message to retry later
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
+
+    channel.basic_consume(queue = QUEUE_NAME, on_message_callback = callback, auto_ack = False)
+
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
 
 
     channel.basic_consume(queue = QUEUE_NAME, on_message_callback = callback, auto_ack = False)
@@ -276,7 +251,7 @@ def consume(worker_id):
     channel.queue_declare(queue=QUEUE_NAME)
     channel.basic_qos(prefetch_count=256)  # Ensure fair distribution of messages across workers
     
-    inserter = EventInserter(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+    inserter = EventInserter(MEMGRAPH_URI, MEMGRAPH_USER, MEMGRAPH_PASSWORD)
 
     event_count = 0
     start_time = time.time()
