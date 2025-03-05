@@ -21,7 +21,7 @@ for index, unique_id in enumerate(ids, start=1):
                     "formvalue": "{parameter: [{ name: 'jsonparams', value : to_string(@) }]}"
                 }
             ],
-            "repeat": False,
+            "repeat": True,
             "requirements": [
                 {
                     "conditions": [
