@@ -9,6 +9,7 @@
 
 
 from flask import Flask, request, jsonify
+import json
 import logging
 log = logging.getLogger('werkzeug')
 #log.setLevel(logging.ERROR)
@@ -320,7 +321,58 @@ def event_test_suite_finished():
 
     return jsonify({"status": "TestSuiteFinished event received"}), 200
 
+global_artC_fcd_counter_if_statement = 0
+@app.route('/test', methods=['POST'])
+def test():
+     #data = request.get_json()['parameter'][0]['value']
+    data = request.get_json()
+    #print(len(data), data)
+
+    json_str = data['parameter'][0]['value']
+
+   #print(json_str)
+
+    data = json.loads(json_str)
+    if "contexts" in data:
+        global_artC_fcd_counter +=1
+        print("test", global_artC_fcd_counter_if_statement)
+
+    print(data)
+    print()
+    print(data["id"])
+    with open("event_log.txt", "a") as f:
+        f.write(f"{data["id"]}\n")
+    # # Extract all flow context IDs (each flow context has an "eventId")
+    # if 'flowContexts' in data:
+    #     flow_context_ids = [fc['eventId'] for fc in data['flowContexts']]
+
+    # # Extract the artifact created event ID (assuming the first artifact is the one we need)
+    #     artifact_event_id = data['artifacts'][0]['eventId']
+    #     
+   
+    #     #data = json.loads(data)
+
+
+    # #print("Received data from EI", data)
+    # print('\n' * 2 + '#' * 80 + '\n' * 2)
+    return "ok", 200
+
+global_artC_fcd_counter = 0
+@app.route('/test2', methods=['POST'])
+def test2():
+    global_artC_fcd_counter += 1
+    print("test2_fcd_counter", global_artC_fcd_counter)
+
+    return "ok", 200
+
+
+subscriptions = 0
+@app.route('/eiffel/specific_id', methods=['POST'])
+def specific_id():
+    subscriptions += 1
+    print("subscriptions triggered", subscriptions)
+    return "ok", 200
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",debug=True, port=5000, threaded=True)
-    

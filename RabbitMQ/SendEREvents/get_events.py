@@ -9,18 +9,22 @@ load_dotenv()
 num_events = 0
 prev_num_events = 0
 
-def fetch_page(url, page_no, page_size):
- 
+def fetch_page(url, page_no, page_size, max_retries=100):
     full_url = f"{url}?pageNo={page_no}&pageSize={page_size}"
-    try:
-        print(full_url)
-        response = requests.get(full_url)
-        
-        response.raise_for_status()
-        return response.json()["items"], response.json()["totalNumberItems"]
-    except requests.RequestException as e:
-        print(f"Error fetching page {page_no}: {e}")
-        return [], 0
+    attempt = 1
+    while attempt <= max_retries:
+        try:
+            print(full_url)
+            response = requests.get(full_url)
+            response.raise_for_status()
+            return response.json()["items"], response.json()["totalNumberItems"]
+        except (requests.RequestException, ValueError) as e:
+            print(f"Attempt {attempt} failed for page {page_no}: {e}")
+            time.sleep(min(2 ** attempt, 30))
+            attempt += 1
+    print(f"Failed to fetch page {page_no} after {max_retries} attempts")
+    return [], 0
+
 
 def get_new_events(url, newer_page_no, older_page_no, page_size, previous_page_data):
     global prev_num_events
