@@ -15,6 +15,7 @@ log = logging.getLogger('werkzeug')
 #log.setLevel(logging.ERROR)
 
 PRINT = True
+LOG = True
 
 app = Flask(__name__)
 
@@ -25,6 +26,10 @@ IMPOSSIBLE_COUNTER = 0
 TEST_CASE_STARTED_COUNTER = 0
 TEST_CASE_FINISHED_COUNTER = 0
 TEST_SUITE_FINISHED_COUNTER = 0
+
+@app.route('/trigger', methods=['POST'])
+def triggers():
+    return "yes", 200
 
 @app.route('/event_ArtC', methods=['POST'])
 def event_ArtC():
@@ -45,7 +50,7 @@ def event_ArtC():
     {phase:"afterAsync"}
     );
     """
-    global ARTIFACT_CREATED_COUNTER, PRINT
+    global ARTIFACT_CREATED_COUNTER, PRINT, LOG
     data = request.json  
 
     event_id = data.get("ArtC")
@@ -54,6 +59,9 @@ def event_ArtC():
     ARTIFACT_CREATED_COUNTER += 1
 
     if context_id != "NONE" and event_id != "NONE":
+        if LOG:
+            with open("event_log.txt", "a") as f:
+                f.write(f"{event_id},{context_id}\n")
         if PRINT:
             print(f"\033[32mALERT: ArtifactCreatedEvent {event_id} is linked to ContextDefinedEvent {context_id}\033[0m")
     #print(ARTIFACT_CREATED_COUNTER)
