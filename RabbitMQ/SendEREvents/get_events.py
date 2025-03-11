@@ -4,6 +4,7 @@ import time
 import math
 from dotenv import load_dotenv
 import os
+import gzip
 
 load_dotenv()
 num_events = 0
@@ -56,11 +57,11 @@ def get_new_events(url, newer_page_no, older_page_no, page_size, previous_page_d
         combined.append(event)
     return list({event["meta"]["id"]: event for event in combined}.values())
 
-def fetch_all_events(url, starting_page, page_size=10, output_file = "events.txt"):
+def fetch_all_events(url, starting_page, page_size, output_file = "events.json"):
     #all_events = []
     current_page = starting_page
     new_events = []
-    with open(output_file, 'w') as f:
+    with gzip.open("events.json.gz", "wt", encoding="utf-8") as f:
 
     #Process pages moving upward toward page 1 (newer events)
         while current_page > 0:
@@ -81,7 +82,6 @@ if __name__ == '__main__':
     response = requests.get(base_url)
     
     starting_page = math.ceil(response.json()["totalNumberItems"]/page_size)
-    starting_page = 2
     print(starting_page)
     
     events = fetch_all_events(base_url, starting_page, page_size)

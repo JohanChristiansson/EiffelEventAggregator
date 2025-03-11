@@ -7,6 +7,8 @@ import requests
 import os
 import argparse
 from dotenv import load_dotenv
+import gc
+import gzip
 
 load_dotenv()
 
@@ -17,13 +19,17 @@ single_queue = os.getenv("QUEUE_NAME")  #Single Queue
 multiple_queues = os.getenv("QUEUE_NAMES").split(',')
 multiple_queues = list(map(str.strip, multiple_queues))
 base_url = os.getenv('EVENT_REPOSITORY_URL')
-page_size = 100_000
+page_size = 100_00
+FILE = "events.json.gz"
 
 #Argument Parsing
 parser = argparse.ArgumentParser(description="RabbitMQ Queue Writer")
-group = parser.add_mutually_exclusive_group()
-group.add_argument("-eiffel", action="store_true", help="Enable writing to multiple queues")
-group.add_argument("-graphdb", action="store_true", help="Enable writing to a single queue")
+sink_group = parser.add_mutually_exclusive_group()
+sink_group.add_argument("-eiffel", action="store_true", help="Enable writing to multiple queues")
+sink_group.add_argument("-graphdb", action="store_true", help="Enable writing to a single queue")
+source_group = parser.add_mutually_exclusive_group()
+source_group.add_argument("-er", action="store_true", help="Read ER data directly from the event repository")
+source_group.add_argument("-file", action="store_true", help="Read ER data from file")
 args = parser.parse_args()
 
 #Default behavior: Single queue if no argument is provided
@@ -67,6 +73,23 @@ def get_queue_length(passive_queue):
     """Return Queue Length"""
     return passive_queue.method.message_count
 
+def read_events_from_file(file_path, chunk_size = page_size):
+    """Generator to read a large JSON file line by line, yielding chunks of events."""
+    with gzip.open(file_path, "rt", encoding="utf-8") as f:
+        chunk = []
+        for line in f:
+            try:
+                event = json.loads(line.strip())
+                chunk.append(event)
+            except json.JSONDecodeError:
+                print("Invalid line", event)
+                continue  #Skip invalid lines, if any
+            if len(chunk) == chunk_size:
+                yield chunk
+                chunk = []
+        if chunk:
+            yield chunk  #Yield the last chunk if there are remaining events
+
 def publish_events(connection, channel, new_events):
     """Publish events to RabbitMQ, with auto-reconnect logic."""
     for event in new_events:
@@ -86,7 +109,12 @@ def publish_events(connection, channel, new_events):
 def send_events_to_rabbit(connection, channel, current_page):
     """Fetch new events and send them to the appropriate RabbitMQ queues."""
     new_events = []
+    file_index = 0
     current_time = time.time()
+    print("args.file", args.file, "aasd", args.er)
+    if args.file:
+     
+        file_gen = read_events_from_file(FILE) 
     while current_page > 0:
         passive_queue = channel.queue_declare(queue=queue_to_check, passive=True)
         queue_length = get_queue_length(passive_queue)
@@ -95,14 +123,24 @@ def send_events_to_rabbit(connection, channel, current_page):
             print(f"Messages remaining in the queue '{queue_to_check}': {queue_length}")
 
         # If the current queue is smaller than page size, add more data
-        if queue_length > page_size * 100:
+        if queue_length > page_size * 5:
             time.sleep(1)
             continue
 
-        print("Retrieving new page", current_page)
-        new_events = get_new_events(base_url, current_page, current_page + 1, page_size, new_events)
-        current_page -= 1
- 
+        if args.er:
+            print("Retrieving new page", current_page)
+            new_events = get_new_events(base_url, current_page, current_page + 1, page_size, new_events)
+            current_page -= 1
+
+        if args.file: 
+            print(f"Reading events from file, starting from index {file_index}")
+            try:
+                new_events = next(file_gen)
+                file_index += page_size
+            except StopIteration:
+                print("End of file reached.")
+                break
+
         t = time.time()
         print("Start publishing events")
         connection, channel = publish_events(connection, channel, new_events)
