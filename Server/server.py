@@ -334,11 +334,27 @@ def test():
 
     data = json.loads(json_str)
     if "contexts" in data:
+        print(data)
+        print("#########")
+        print("#########")
+        print("#########")
+        print("#########")
+        print("#########")
         global_artC_fcd_counter +=1
         print("test", global_artC_fcd_counter_if_statement)
 
-    print(data)
-    print()
+    if "flowContexts" in data:
+        print(data)
+        print("#########")
+        print("#########")
+        print("#########")
+        print("#########")
+        print("#########")
+        global_artC_fcd_counter +=1
+        print("test", global_artC_fcd_counter_if_statement)
+
+    #print(data)
+    # print()
     print(data["id"])
     with open("event_log.txt", "a") as f:
         f.write(f"{data["id"]}\n")
@@ -360,8 +376,11 @@ def test():
 global_artC_fcd_counter = 0
 @app.route('/test2', methods=['POST'])
 def test2():
-    global_artC_fcd_counter += 1
-    print("test2_fcd_counter", global_artC_fcd_counter)
+    data = request.get_json()
+    json_str = data['parameter'][0]['value']
+    data = json.loads(json_str)
+    with open("event_log.txt", "a") as f:
+        f.write(f"{data["id"]}\n")
 
     return "ok", 200
 
@@ -369,8 +388,8 @@ def test2():
 subscriptions = 0
 @app.route('/eiffel/specific_id', methods=['POST'])
 def specific_id():
-    subscriptions += 1
-    print("subscriptions triggered", subscriptions)
+   # subscriptions += 1
+    print("subscriptions triggered", request.get_json())
     return "ok", 200
 
 
