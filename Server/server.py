@@ -14,7 +14,7 @@ import logging
 log = logging.getLogger('werkzeug')
 #log.setLevel(logging.ERROR)
 
-PRINT = True
+PRINT = False
 LOG = True
 
 app = Flask(__name__)
@@ -394,7 +394,4 @@ def specific_id():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",debug=True, port=5000)
-
-    
-
+    app.run(host="0.0.0.0",debug=True, port=5000, threaded=True)

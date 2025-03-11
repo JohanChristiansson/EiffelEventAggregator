@@ -9,7 +9,7 @@ def send_http_request_artifact_created(
     """
     Sends an HTTP request when an EiffelArtifactCreatedEvent is triggered.
     """
-    url = "http://host.docker.internal::5000/event_ArtC"  # Use 'host.docker.internal' for Docker
+    url = "http://172.25.45.203:5000/event_ArtC"  # Use 'host.docker.internal' for Docker
     headers = {"Content-Type": "application/json"}
     payload = {"ArtC": ArtC, "FCD": FCD}
 

@@ -10,6 +10,7 @@ replay_pid*
 
 # Python virtual environment (if applicable)
 venv/
+WSLvenv/
 
 # Python cache
 __pycache__
