@@ -56,3 +56,5 @@ events.*
 #Data
 Demos/Neo4j/create_triggers/artifact_created_ids.py
 *.txt
+*.csv
+*.xlsx
