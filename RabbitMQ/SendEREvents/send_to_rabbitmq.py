@@ -36,7 +36,8 @@ args = parser.parse_args()
 use_multiple_queues = args.eiffel if args.eiffel else not args.graphdb
 
 #Use the first queue for Eiffel? Should perhaps be a specific one, the one processed the slowest? Or just EI 
-queue_to_check = multiple_queues[0] if use_multiple_queues else single_queue
+#queue_to_check = multiple_queues[0] if use_multiple_queues else single_queue
+queue_to_check = single_queue
 
 
 def connect_to_rabbitmq():
@@ -58,6 +59,8 @@ def connect_to_rabbitmq():
             for queue_name in queues_to_use:
                 channel.queue_declare(queue=queue_name, durable=True)
                 channel.queue_bind(exchange='events_exchange', queue=queue_name)
+            
+            channel.queue_declare(queue=single_queue, durable=True)
 
             print(f"Connected to RabbitMQ! Queues setup: {queues_to_use}")
             return connection, channel
@@ -90,20 +93,66 @@ def read_events_from_file(file_path, chunk_size = page_size):
         if chunk:
             yield chunk  #Yield the last chunk if there are remaining events
 
+# def publish_events(connection, channel, new_events):
+#     """Publish events to RabbitMQ, with auto-reconnect logic."""
+#     for event in new_events:
+#         event_json = json.dumps(event)
+
+#         while True:  #Keep trying until the event is published
+#             try:
+#                 channel.basic_publish(exchange='events_exchange', routing_key='', body=event_json)
+#                 break 
+#             except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
+#                 print(f"RabbitMQ error while publishing: {e}, reconnecting...")
+#                 time.sleep(5) 
+#                 connection, channel = connect_to_rabbitmq()  # Reconnect
+#     return connection, channel  #Return updated connection and channel
+
+
+
+
+def wait_for_queue_to_empty(channel, queue_name, threshold=0):
+    """Wait until the queue has processed most of its messages."""
+    #Set threshold to 0 to ensure all data is in ER before we start using EI
+    while True:
+        passive_queue = channel.queue_declare(queue=queue_name, passive=True)
+        queue_length = passive_queue.method.message_count
+        if queue_length <= threshold:
+            break
+        print(f"Waiting for {queue_name} to empty... ({queue_length} messages left)")
+        time.sleep(2)
+
 def publish_events(connection, channel, new_events):
-    """Publish events to RabbitMQ, with auto-reconnect logic."""
+    """Publish events to RabbitMQ, ensuring Stream1 processes them first."""
+    
+    # Publish to Stream1 first
     for event in new_events:
         event_json = json.dumps(event)
+        while True:
+            try:
+                channel.basic_publish(exchange='', routing_key=single_queue, body=event_json)
+                break
+            except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
+                print(f"RabbitMQ error while publishing to ER: {e}, reconnecting...")
+                time.sleep(5)
+                connection, channel = connect_to_rabbitmq()
 
-        while True:  #Keep trying until the event is published
+    print("batch sent to ER. Waiting for it to be processed...")
+    wait_for_queue_to_empty(channel, single_queue)
+
+    # Publish to Stream2 and Stream3 after Stream1 processes the batch
+    for event in new_events:
+        event_json = json.dumps(event)
+        while True:
             try:
                 channel.basic_publish(exchange='events_exchange', routing_key='', body=event_json)
-                break 
+                break
             except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
-                print(f"RabbitMQ error while publishing: {e}, reconnecting...")
-                time.sleep(5) 
-                connection, channel = connect_to_rabbitmq()  # Reconnect
-    return connection, channel  #Return updated connection and channel
+                print(f"RabbitMQ error while publishing to exchange: {e}, reconnecting...")
+                time.sleep(5)
+                connection, channel = connect_to_rabbitmq()
+
+    return connection, channel
 
 
 def send_events_to_rabbit(connection, channel, current_page):
@@ -113,7 +162,6 @@ def send_events_to_rabbit(connection, channel, current_page):
     current_time = time.time()
     print("args.file", args.file, "aasd", args.er)
     if args.file:
-     
         file_gen = read_events_from_file(FILE) 
     while current_page > 0:
         passive_queue = channel.queue_declare(queue=queue_to_check, passive=True)
@@ -163,3 +211,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
