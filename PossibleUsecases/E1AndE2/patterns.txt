@@ -1,0 +1,51 @@
+//How to query Artifact_Published on a mixed E1 E2 database. These can be made as triggers aswell.
+//Requirement for E1 nodes with the current patterns is that the flowcontext field 
+//needs to be copied to outside the data blob so that it can easily be filtered on
+
+//Option 1: Handle E1 and E2 patterns seperately
+
+//E1 Artifact Published pattern query
+MATCH (AUE:Event {type: "EiffelArtifactUploadedEvent"})-[:LINKS_TO]->(ANE:Event {type: "EiffelArtifactNewEvent"})
+WHERE AUE.flowcontext IS NOT NULL AND AUE.flowcontext <> "" 
+  AND ANE.flowcontext IS NOT NULL AND ANE.flowcontext <> ""
+RETURN AUE, ANE
+
+//E2 Artifact Published pattern query
+MATCH (ARTP:Event {type: "EiffelArtifactPublishedEvent"})-[:FLOW_CONTEXT]->(FCD:Event {type: "EiffelFlowContextDefinedEvent"})
+MATCH (ARTP)-[:ARTIFACT]->(ARTC:Event {type: "EiffelArtifactCreatedEvent"})
+MATCH (ARTC)-[:FLOW_CONTEXT]->(FCD2:Event {type: "EiffelFlowContextDefinedEvent"})
+RETURN ARTP, ARTC, FCD, FCD2
+
+//Option 2: Handle them with one query. Allow combinations of nodes from the different versions. 
+MATCH (Initial:Event)
+WHERE Initial.type IN ["EiffelArtifactPublishedEvent", "EiffelArtifactUploadedEvent"]
+
+//Attempt to match Initial Event with FCD2, ARTC with connected FCD event, 
+//and ANE flowcontext field is checked later
+OPTIONAL MATCH (Initial)-[:FLOW_CONTEXT]->(FCD2:Event {type: "EiffelFlowContextDefinedEvent"})
+OPTIONAL MATCH (Initial)-[:ARTIFACT|LINKS_TO]->(ANE:Event {type: "EiffelArtifactNewEvent"})
+OPTIONAL MATCH (Initial)-[:ARTIFACT|LINKS_TO]->(ARTC:Event {type: "EiffelArtifactCreatedEvent"})-[:FLOW_CONTEXT]->(FCD:Event {type: "EiffelFlowContextDefinedEvent"})
+
+
+//filter the results to ensure at least one of the required patterns is matched
+WITH Initial, ARTC, ANE, FCD, FCD2
+WHERE
+  (
+   (
+    Initial.type = "EiffelArtifactPublishedEvent" AND 
+    FCD2 IS NOT NULL
+   )
+  OR 
+   (
+    Initial.type = "EiffelArtifactUploadedEvent" AND 
+    Initial.flowcontext IS NOT NULL
+   )
+  )
+  AND
+  (
+      (ANE IS NOT NULL AND ANE.flowcontext IS NOT NULL) OR 
+      ARTC IS NOT NULL
+  )
+
+RETURN Initial, ARTC, ANE, FCD, FCD2
+

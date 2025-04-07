@@ -1,0 +1,53 @@
+//Test scenarios to see how E1 and E2 nodes can interact in the same database for Artifact_Published pattern
+
+CREATE
+  // Scenario 1: Pure Gen 1 match (ArtifactUploadedEvent -> ArtifactNewEvent)
+  (AUE1:Event {type: "EiffelArtifactUploadedEvent", name: "AUE1", flowcontext: "context1"}),
+  (ANE1:Event {type: "EiffelArtifactNewEvent", name: "ANE1", flowcontext: "context2"}),
+  (AUE1)-[:LINKS_TO]->(ANE1),
+
+  // Scenario 2: Pure Gen 2 match (ArtifactPublishedEvent -> FlowContextDefinedEvent and ArtifactCreatedEvent -> FlowContextDefinedEvent)
+  (ARTP2:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP2"}),
+  (FCD2:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD2"}),
+  (ARTC2:Event {type: "EiffelArtifactCreatedEvent", name: "ARTC2"}),
+  (FCD3:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD3"}),
+  (ARTP2)-[:FLOW_CONTEXT]->(FCD2),
+  (ARTP2)-[:ARTIFACT]->(ARTC2),
+  (ARTC2)-[:FLOW_CONTEXT]->(FCD3),
+
+  // Scenario 3: Gen 1 + Gen 2 This should match but only for AUE3 and ANE3 as that is a gen 1 case
+  (ARTP3:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP3"}),
+  (AUE3:Event {type: "EiffelArtifactUploadedEvent", name: "AUE3", flowcontext: "context6"}),
+  (ANE3:Event {type: "EiffelArtifactNewEvent", name: "ANE3", flowcontext: "context7"}),
+  (FCD4:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD4"}),
+  (ARTP3)-[:FLOW_CONTEXT]->(FCD4),
+  (ARTP3)-[:ARTIFACT]->(AUE3),
+  (AUE3)-[:LINKS_TO]->(ANE3),
+
+  // Scenario 4: This should not match as ARTC lacks a FCD event.
+  (ARTP4:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP4"}),
+  (ARTC3:Event {type: "EiffelArtifactCreatedEvent", name: "ARTC3"}),
+  (FCD5:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD5"}),
+  (ARTP4)-[:ARTIFACT]->(ARTC3),
+  (ARTP4)-[:FLOW_CONTEXT]->(FCD5),
+
+  // Scenario 5: Gen 1 + Gen 2 match (ArtifactPublishedEvent -> ArtifactNewEvent with flowcontext as property)
+  (ARTP5:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP5"}),
+  (ANE5:Event {type: "EiffelArtifactNewEvent", name: "ANE5", flowcontext: "context11"}),
+  (FCD6:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD6"}),
+  (ARTP5)-[:FLOW_CONTEXT]->(FCD6),
+  (ARTP5)-[:ARTIFACT]->(ANE5),
+
+  // Scenario 6: This is correct and should match
+  (ARTP6:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP6"}),
+  (ANE6:Event {type: "EiffelArtifactNewEvent", name: "ANE6", flowcontext: "context7"}),
+  (FCD7:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD7"}),
+  (ARTP6)-[:FLOW_CONTEXT]->(FCD7),
+  (ARTP6)-[:ARTIFACT]->(ANE6),
+
+  // Scenario 7: This is not correct as ANE3 does not have a flowcontext field.
+  (ARTP7:Event {type: "EiffelArtifactPublishedEvent", name: "ARTP7"}),
+  (ANE7:Event {type: "EiffelArtifactNewEvent", name: "ANE7"}),
+  (FCD8:Event {type: "EiffelFlowContextDefinedEvent", name: "FCD8"}),
+  (ARTP7)-[:FLOW_CONTEXT]->(FCD8),
+  (ARTP7)-[:ARTIFACT]->(ANE7);
