@@ -1,0 +1,115 @@
+// ---------------------- First Graph (ProductId: 1) ----------------------
+
+// Level 1
+CREATE (a1:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (b1:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (a1)-[:CONNECTS_TO]->(b1)
+
+// Level 2
+CREATE (a2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (a3:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (b1)-[:CONNECTS_TO]->(a2)
+CREATE (b1)-[:CONNECTS_TO]->(a3)
+
+CREATE (b2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (b3:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (a2)-[:CONNECTS_TO]->(b2)
+CREATE (a3)-[:CONNECTS_TO]->(b3)
+
+// Level 3
+CREATE (a4:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (a5:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (b2)-[:CONNECTS_TO]->(a4)
+CREATE (b2)-[:CONNECTS_TO]->(a5)
+
+CREATE (a6:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (a7:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (b3)-[:CONNECTS_TO]->(a6)
+CREATE (b3)-[:CONNECTS_TO]->(a7)
+
+CREATE (b4:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (b5:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (b6:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (b7:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (x:Event {name: "x", type: "x", ProductId: 1})
+CREATE (a4)-[:CONNECTS_TO]->(x)
+CREATE (x)-[:CONNECTS_TO]->(b4)
+CREATE (a5)-[:CONNECTS_TO]->(b5)
+CREATE (a6)-[:CONNECTS_TO]->(b6)
+CREATE (a7)-[:CONNECTS_TO]->(b7)
+
+// Stop Events (C nodes)
+CREATE (c1:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})
+CREATE (c2:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})
+CREATE (c3:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})
+CREATE (c4:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})
+
+CREATE (b4)-[:CONNECTS_TO]->(c1)
+CREATE (b5)-[:CONNECTS_TO]->(c2)
+CREATE (b6)-[:CONNECTS_TO]->(c3)
+CREATE (b7)-[:CONNECTS_TO]->(c4)
+
+
+
+// ---------------------- Second Graph (ProductId: 2) ----------------------
+// Level 1
+CREATE (a1_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (b1_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (a1_2)-[:CONNECTS_TO]->(b1_2)
+
+CREATE (a2_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (a3_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (b1_2)-[:CONNECTS_TO]->(a2_2)
+CREATE (b1_2)-[:CONNECTS_TO]->(a3_2)
+
+CREATE (b2_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (b3_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (a2_2)-[:CONNECTS_TO]->(b2_2)
+CREATE (a3_2)-[:CONNECTS_TO]->(b3_2)
+
+CREATE (a4_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (a5_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (b2_2)-[:CONNECTS_TO]->(a4_2)
+CREATE (b2_2)-[:CONNECTS_TO]->(a5_2)
+
+CREATE (a6_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (a7_2:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (b3_2)-[:CONNECTS_TO]->(a6_2)
+CREATE (b3_2)-[:CONNECTS_TO]->(a7_2)
+
+CREATE (b4_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (b5_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (b6_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (b7_2:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (a4_2)-[:CONNECTS_TO]->(b4_2)
+CREATE (a5_2)-[:CONNECTS_TO]->(b5_2)
+CREATE (a6_2)-[:CONNECTS_TO]->(b6_2)
+CREATE (a7_2)-[:CONNECTS_TO]->(b7_2)
+
+CREATE (c1_2:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 2})
+CREATE (c2_2:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 2})
+CREATE (c3_2:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 2})
+CREATE (c4_2:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 2})
+CREATE (b4_2)-[:CONNECTS_TO]->(c1_2)
+CREATE (b5_2)-[:CONNECTS_TO]->(c2_2)
+CREATE (b6_2)-[:CONNECTS_TO]->(c3_2)
+CREATE (b7_2)-[:CONNECTS_TO]->(c4_2)
+
+
+// Extra Random Events
+CREATE (:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+CREATE (:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})
+CREATE (:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
+CREATE (:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})
+CREATE (:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 2})
+
+// Some random connections (but not in ArtC → CD → ArtC → CD → SCS format)
+CREATE (a1)-[:CONNECTS_TO]->(:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 1})
+CREATE (:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 2})-[:CONNECTS_TO]->(b1_2)
+
+// A misplaced SCS event
+CREATE (:Event {name: "SCS", type: "EiffelSourceCodeSubmittedEvent", ProductId: 1})-[:CONNECTS_TO]->(:Event {name: "ArtC", type: "EiffelArtifactCreatedEvent", ProductId: 1})
+
+// A disconnected CD event
+CREATE (:Event {name: "CD", type: "EiffelCompositionDefinedEvent", ProductId: 2})
