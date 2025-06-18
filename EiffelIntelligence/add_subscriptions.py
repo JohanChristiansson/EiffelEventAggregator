@@ -13,8 +13,8 @@ To run this file, you need to provide correct folder with the
 
 ENDPOINTS = {
     "Artifact_Created": "http://localhost:8051/subscriptions",
-    "test2": "http://localhost:5000/test2",
-    "test3": "http://localhost:5000/test3",
+    "Artifact_Published": "http://localhost:8052/subscriptions",
+    "CLM": "http://localhost:8053/subscriptions",
 }
 
 def send_subscription(file_path, endpoint_url):

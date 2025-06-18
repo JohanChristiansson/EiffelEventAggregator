@@ -15,12 +15,12 @@ load_dotenv()
 username = os.getenv("USERNAME")
 password = os.getenv("PASSWORD")
 host = os.getenv("HOST")
-single_queue = os.getenv("QUEUE_NAME")  #Single Queue
+single_queue = os.getenv("QUEUE_NAME")  #Queue for ER/EI
 multiple_queues = os.getenv("QUEUE_NAMES").split(',')
 multiple_queues = list(map(str.strip, multiple_queues))
 base_url = os.getenv('EVENT_REPOSITORY_URL')
-page_size = 100_00
-FILE = "events.json.gz"
+page_size = 10_000
+FILE = "EiffelEventAggregator/RabbitMQ/SendEREvents/events.json.gz"
 
 #Argument Parsing
 parser = argparse.ArgumentParser(description="RabbitMQ Queue Writer")
@@ -32,11 +32,8 @@ source_group.add_argument("-er", action="store_true", help="Read ER data directl
 source_group.add_argument("-file", action="store_true", help="Read ER data from file")
 args = parser.parse_args()
 
-#Default behavior: Single queue if no argument is provided
 use_multiple_queues = args.eiffel if args.eiffel else not args.graphdb
 
-#Use the first queue for Eiffel? Should perhaps be a specific one, the one processed the slowest? Or just EI 
-#queue_to_check = multiple_queues[0] if use_multiple_queues else single_queue
 queue_to_check = single_queue
 
 
@@ -52,6 +49,7 @@ def connect_to_rabbitmq():
                     host=host, credentials=credentials, heartbeat=30
                 )
             )
+
             channel = connection.channel()
             channel.exchange_declare(exchange='events_exchange', exchange_type='fanout', durable=True)
 
@@ -93,23 +91,6 @@ def read_events_from_file(file_path, chunk_size = page_size):
         if chunk:
             yield chunk  #Yield the last chunk if there are remaining events
 
-# def publish_events(connection, channel, new_events):
-#     """Publish events to RabbitMQ, with auto-reconnect logic."""
-#     for event in new_events:
-#         event_json = json.dumps(event)
-
-#         while True:  #Keep trying until the event is published
-#             try:
-#                 channel.basic_publish(exchange='events_exchange', routing_key='', body=event_json)
-#                 break 
-#             except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
-#                 print(f"RabbitMQ error while publishing: {e}, reconnecting...")
-#                 time.sleep(5) 
-#                 connection, channel = connect_to_rabbitmq()  # Reconnect
-#     return connection, channel  #Return updated connection and channel
-
-
-
 
 def wait_for_queue_to_empty(channel, queue_name, threshold=0):
     """Wait until the queue has processed most of its messages."""
@@ -123,29 +104,33 @@ def wait_for_queue_to_empty(channel, queue_name, threshold=0):
         time.sleep(2)
 
 def publish_events(connection, channel, new_events):
-    """Publish events to RabbitMQ, ensuring Stream1 processes them first."""
+    print("Start publishing events", len(new_events))
+    """Publish events to RabbitMQ"""
     
-    # Publish to Stream1 first
+
     for event in new_events:
         event_json = json.dumps(event)
         while True:
             try:
                 channel.basic_publish(exchange='', routing_key=single_queue, body=event_json)
+                #print(event_json, "Publish to ER/GraphDB")
                 break
             except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
                 print(f"RabbitMQ error while publishing to ER: {e}, reconnecting...")
                 time.sleep(5)
                 connection, channel = connect_to_rabbitmq()
 
-    print("batch sent to ER. Waiting for it to be processed...")
     wait_for_queue_to_empty(channel, single_queue)
 
-    # Publish to Stream2 and Stream3 after Stream1 processes the batch
+    if not use_multiple_queues:
+        return connection, channel
+
     for event in new_events:
         event_json = json.dumps(event)
         while True:
             try:
                 channel.basic_publish(exchange='events_exchange', routing_key='', body=event_json)
+                #print(event_json, "Publish to EI")
                 break
             except (pika.exceptions.AMQPError, pika.exceptions.StreamLostError) as e:
                 print(f"RabbitMQ error while publishing to exchange: {e}, reconnecting...")
@@ -160,7 +145,7 @@ def send_events_to_rabbit(connection, channel, current_page):
     new_events = []
     file_index = 0
     current_time = time.time()
-    print("args.file", args.file, "aasd", args.er)
+
     if args.file:
         file_gen = read_events_from_file(FILE) 
     while current_page > 0:
@@ -170,7 +155,7 @@ def send_events_to_rabbit(connection, channel, current_page):
         if queue_length is not None:
             print(f"Messages remaining in the queue '{queue_to_check}': {queue_length}")
 
-        # If the current queue is smaller than page size, add more data
+        #If the current queue is smaller than page size, add more data
         if queue_length > page_size * 5:
             time.sleep(1)
             continue

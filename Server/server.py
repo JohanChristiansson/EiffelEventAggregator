@@ -322,56 +322,7 @@ def event_test_suite_finished():
     return jsonify({"status": "TestSuiteFinished event received"}), 200
 
 global_artC_fcd_counter_if_statement = 0
-@app.route('/test', methods=['POST'])
-def test():
-     #data = request.get_json()['parameter'][0]['value']
-    data = request.get_json()
-    #print(len(data), data)
 
-    json_str = data['parameter'][0]['value']
-
-   #print(json_str)
-
-    data = json.loads(json_str)
-    if "contexts" in data:
-        print(data)
-        print("#########")
-        print("#########")
-        print("#########")
-        print("#########")
-        print("#########")
-        global_artC_fcd_counter +=1
-        print("test", global_artC_fcd_counter_if_statement)
-
-    if "flowContexts" in data:
-        print(data)
-        print("#########")
-        print("#########")
-        print("#########")
-        print("#########")
-        print("#########")
-        global_artC_fcd_counter +=1
-        print("test", global_artC_fcd_counter_if_statement)
-
-    #print(data)
-    # print()
-    print(data["id"])
-    with open("event_log.txt", "a") as f:
-        f.write(f"{data["id"]}\n")
-    # # Extract all flow context IDs (each flow context has an "eventId")
-    # if 'flowContexts' in data:
-    #     flow_context_ids = [fc['eventId'] for fc in data['flowContexts']]
-
-    # # Extract the artifact created event ID (assuming the first artifact is the one we need)
-    #     artifact_event_id = data['artifacts'][0]['eventId']
-    #     
-   
-    #     #data = json.loads(data)
-
-
-    # #print("Received data from EI", data)
-    # print('\n' * 2 + '#' * 80 + '\n' * 2)
-    return "ok", 200
 
 global_artC_fcd_counter = 0
 @app.route('/test2', methods=['POST'])
@@ -380,7 +331,7 @@ def test2():
     json_str = data['parameter'][0]['value']
     data = json.loads(json_str)
     with open("event_log.txt", "a") as f:
-        f.write(f"{data["id"]}\n")
+        f.write(f"{data['id']}\n")
 
     return "ok", 200
 
