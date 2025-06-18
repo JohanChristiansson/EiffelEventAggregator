@@ -9,6 +9,7 @@ load_dotenv()
 
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
+#This should have been done in a better way, needs to be changed manually to the correct queue as is.
 EI_QUEUE_URL = "http://localhost:15672/api/queues/%2F/eiffel.eiffelintelligence-artifact.messageQueue.durable"
 ER_QUEUE_URL = "http://localhost:15672/api/queues/%2F/eiffel.eiffel-er.ERMessageConsumer.durable"
 NEO4J_QUEUE_URL = "http://localhost:15672/api/queues/%2F/neo4j"
