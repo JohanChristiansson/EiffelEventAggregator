@@ -1,0 +1,5 @@
+MATCH startPath = (ArtC:Event {ProductId: 1, type: "EiffelArtifactCreatedEvent", name: "ArtC1"})-[:COMPOSITION]->(CD:Event {type: "EiffelCompositionDefinedEvent"})  
+MATCH path = (CD)-[:ELEMENT|COMPOSITION*]->(CDLast:Event {type: "EiffelCompositionDefinedEvent"})
+MATCH endPath = (CDLast)-[:ELEMENT]->(SCS:Event {type: "EiffelSourceChangeSubmittedEvent"})  
+ 
+RETURN path, repeatedPath, endPath;

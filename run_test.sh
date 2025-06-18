@@ -32,7 +32,7 @@ pid_logger=$!
 
 # Run message bus script and wait for it to complete
 echo "Start sending events to Message bus"
-python3 EiffelEventAggregator/RabbitMQ/SendEREvents/send_to_rabbitmq.py -graphdb -file
+python3 EiffelEventAggregator/RabbitMQ/SendEREvents/send_to_rabbitmq.py -eiffel -file
 
 # When message bus script completes, stop the background processes
 echo "Message bus script finished. Stopping background processes..."
