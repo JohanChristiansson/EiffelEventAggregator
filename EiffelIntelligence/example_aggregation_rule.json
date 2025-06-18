@@ -1,0 +1,27 @@
+[
+  {
+    "TemplateName":"ARTIFACT_CREATED",
+    "Type":"EiffelArtifactCreatedEvent",
+    "TypeRule": "meta.type",
+    "IdRule": "meta.id",
+    "StartEvent": "YES",
+    "IdentifyRules" : "[meta.id]",
+    "MatchIdRules": {"_id": "%IdentifyRulesEventId%"},
+    "ExtractionRules" : "{ id: meta.id, type: meta.type, time: meta.time, name: data.name, identity: data.identity, fileInformation: data.fileInformation, buildCommand: data.buildCommand, artifactCustomData: data.customData }",
+    "ProcessRules" : null
+  },
+  {
+    "TemplateName":"ARTIFACT_CREATED",
+    "Type":"EiffelFlowContextDefinedEvent",
+    "TypeRule": "meta.type",
+    "IdRule": "meta.id",
+    "StartEvent": "NO",
+    "IdentifyRules" : "",
+    "MatchIdRules": {},
+    "ExtractionRules" : "",
+    "HistoryIdentifyRules": "",
+    "HistoryExtractionRules": "{ eventId:meta.id, product:data.product, project:data.project, program:data.program, track:data.track, version:data.version }",
+    "HistoryPathRules": "{flowContexts: [{eventId: meta.id}]}",
+    "ProcessRules":null
+  }
+]
